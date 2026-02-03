@@ -1,7 +1,5 @@
-import { Pool } from "pg";
-import dotenv from "dotenv";
-
-dotenv.config();
+import "dotenv/config";
+import { Pool, QueryResult, QueryResultRow } from "pg";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
@@ -9,15 +7,12 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: { rejectUnauthorized: false },
 });
 
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = any>(
   text: string,
   params?: any[]
-): Promise<T[]> {
-  const result = await pool.query(text, params);
-  return result.rows;
+): Promise<QueryResult<T>> {
+  return pool.query<T>(text, params);
 }
