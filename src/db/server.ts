@@ -137,6 +137,85 @@ app.get("/availability", async (req, res) => {
   }
 });
 
+/* ---------------- GET BOOKINGS ---------------- */
+
+app.get("/bookings", async (req, res) => {
+  const { date, staff_id, service_id, status } = req.query as {
+    date?: string; // YYYY-MM-DD
+    staff_id?: string;
+    service_id?: string;
+    status?: string;
+  };
+
+  // If date is missing, you can either require it OR default to today.
+  // I recommend requiring it for clean API behavior.
+  if (!date) {
+    return res.status(400).json({ error: "date (YYYY-MM-DD) is required" });
+  }
+
+  // ⚠️ Timezone note:
+  // This uses your server's timezone unless you add an offset.
+  // If you want fixed timezone, use: ${date}T00:00:00-05:00
+  const dayStart = new Date(`${date}T00:00:00-05:00`);
+  const dayEnd = new Date(`${date}T23:59:59.999-05:00`);
+
+  const bookingStatus = status ?? "confirmed";
+
+  try {
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    // date range
+    params.push(dayStart);
+    conditions.push(`b.start_time >= $${params.length}`);
+
+    params.push(dayEnd);
+    conditions.push(`b.start_time <= $${params.length}`);
+
+    // status
+    params.push(bookingStatus);
+    conditions.push(`b.status = $${params.length}`);
+
+    // optional staff filter
+    if (staff_id) {
+      params.push(staff_id);
+      conditions.push(`b.staff_id = $${params.length}`);
+    }
+
+    // optional service filter
+    if (service_id) {
+      params.push(service_id);
+      conditions.push(`b.service_id = $${params.length}`);
+    }
+
+    const sql = `
+      SELECT
+        b.id,
+        b.service_id,
+        s.name AS service_name,
+        b.staff_id,
+        st.name AS staff_name,
+        b.customer_name,
+        b.customer_phone,
+        b.start_time,
+        b.end_time,
+        b.status,
+        b.created_at
+      FROM bookings b
+      JOIN services s ON s.id = b.service_id
+      JOIN staff st ON st.id = b.staff_id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY b.start_time ASC
+    `;
+
+    const result = await query(sql, params);
+    return res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch bookings" });
+  }
+});
+
 /* ---------------- BOOKINGS ---------------- */
 
 app.post("/bookings", async (req, res) => {
