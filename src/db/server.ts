@@ -68,8 +68,8 @@ app.get("/availability", async (req, res) => {
     const duration = serviceResult.rows[0].duration_minutes;
 
     // 2️⃣ Business hours
-    const dayStart = new Date(`${date}T09:00:00`);
-    const dayEnd = new Date(`${date}T17:00:00`);
+    const dayStart = new Date(`${date}T09:00:00-05:00`);
+    const dayEnd = new Date(`${date}T17:00:00-05:00`);
     const slotStepMinutes = 15;
 
     // 3️⃣ Active staff
@@ -154,7 +154,7 @@ app.post("/bookings", async (req, res) => {
     start_time: string;
   };
 
-  if (!service_id || !customer_name || !start_time) {
+  if (!service_id || !customer_name?.trim() || !start_time) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
