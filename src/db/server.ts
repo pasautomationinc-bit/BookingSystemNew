@@ -51,6 +51,20 @@ app.get("/services", async (_req, res) => {
   }
 });
 
+/* ---------------- STAFF ---------------- */
+
+app.get("/staff", async (_req, res) => {
+  try {
+    const result = await query(
+      "SELECT id, name FROM staff WHERE active = true ORDER BY created_at"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch staff" });
+  }
+});
+
 /* ---------------- AVAILABILITY ---------------- */
 
 app.get("/availability", async (req, res) => {
