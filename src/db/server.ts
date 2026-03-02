@@ -22,7 +22,8 @@ app.use(express.json());
 // Serve admin.html from the SAME folder as this file (src/db) in dev,
 // and from dist/db in production build.
 app.get("/admin", (_req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  const filePath = path.join(process.cwd(), "src", "db", "admin.html");
+  res.sendFile(filePath);
 });
 
 /* ---------------- HEALTH ---------------- */

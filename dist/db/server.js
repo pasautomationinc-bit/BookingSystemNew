@@ -6,11 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 require("dotenv/config");
+const path_1 = __importDefault(require("path"));
 const _1 = require(".");
 const booking_service_1 = require("../services/booking.service");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+/* ---------------- ADMIN PAGE ---------------- */
+// Serve admin.html from the SAME folder as this file (src/db) in dev,
+// and from dist/db in production build.
+app.get("/admin", (_req, res) => {
+    res.sendFile(path_1.default.join(__dirname, "admin.html"));
+});
 /* ---------------- HEALTH ---------------- */
 app.get("/health", async (_req, res) => {
     try {
@@ -95,34 +102,25 @@ app.get("/availability", async (req, res) => {
 /* ---------------- GET BOOKINGS ---------------- */
 app.get("/bookings", async (req, res) => {
     const { date, staff_id, service_id, status } = req.query;
-    // If date is missing, you can either require it OR default to today.
-    // I recommend requiring it for clean API behavior.
     if (!date) {
         return res.status(400).json({ error: "date (YYYY-MM-DD) is required" });
     }
-    // ⚠️ Timezone note:
-    // This uses your server's timezone unless you add an offset.
-    // If you want fixed timezone, use: ${date}T00:00:00-05:00
     const dayStart = new Date(`${date}T00:00:00-05:00`);
     const dayEnd = new Date(`${date}T23:59:59.999-05:00`);
     const bookingStatus = status ?? "confirmed";
     try {
         const conditions = [];
         const params = [];
-        // date range
         params.push(dayStart);
         conditions.push(`b.start_time >= $${params.length}`);
         params.push(dayEnd);
         conditions.push(`b.start_time <= $${params.length}`);
-        // status
         params.push(bookingStatus);
         conditions.push(`b.status = $${params.length}`);
-        // optional staff filter
         if (staff_id) {
             params.push(staff_id);
             conditions.push(`b.staff_id = $${params.length}`);
         }
-        // optional service filter
         if (service_id) {
             params.push(service_id);
             conditions.push(`b.service_id = $${params.length}`);
@@ -156,12 +154,11 @@ app.get("/bookings", async (req, res) => {
 });
 /* ---------------- BOOKINGS ---------------- */
 app.post("/bookings", async (req, res) => {
-    const { service_id, staff_id, customer_name, customer_phone, start_time, } = req.body;
+    const { service_id, staff_id, customer_name, customer_phone, start_time } = req.body;
     if (!service_id || !customer_name?.trim() || !start_time) {
         return res.status(400).json({ error: "Missing required fields" });
     }
     try {
-        // 1️⃣ Service duration
         const serviceResult = await (0, _1.query)("SELECT duration_minutes FROM services WHERE id = $1", [service_id]);
         if (serviceResult.rowCount === 0) {
             return res.status(404).json({ error: "Service not found" });
@@ -170,7 +167,7 @@ app.post("/bookings", async (req, res) => {
         const start = new Date(start_time);
         const end = new Date(start.getTime() + duration * 60000);
         let assignedStaffId = staff_id;
-        // 2️⃣ AUTO-ASSIGN STAFF IF NOT PROVIDED
+        // AUTO-ASSIGN STAFF IF NOT PROVIDED
         if (!assignedStaffId) {
             const availableStaff = await (0, _1.query)(`
         SELECT s.id
@@ -194,7 +191,6 @@ app.post("/bookings", async (req, res) => {
             }
             assignedStaffId = availableStaff.rows[0].id;
         }
-        // 3️⃣ Insert booking (DB constraint still protects)
         const bookingResult = await (0, _1.query)(`
       INSERT INTO bookings (
         service_id,
@@ -206,14 +202,7 @@ app.post("/bookings", async (req, res) => {
       )
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-      `, [
-            service_id,
-            assignedStaffId,
-            customer_name,
-            customer_phone,
-            start,
-            end,
-        ]);
+      `, [service_id, assignedStaffId, customer_name, customer_phone, start, end]);
         return res.status(201).json({
             booking_id: bookingResult.rows[0].id,
             staff_id: assignedStaffId,
@@ -221,7 +210,6 @@ app.post("/bookings", async (req, res) => {
         });
     }
     catch (err) {
-        // 🔒 DB overlap protection
         if (err.code === "23P01") {
             return res.status(409).json({
                 error: "Time slot already booked",
@@ -233,9 +221,10 @@ app.post("/bookings", async (req, res) => {
         });
     }
 });
+/* ---------------- HOLDS ---------------- */
 app.post("/holds", async (req, res) => {
     try {
-        const { tenant_id, staff_id, start_at, end_at, total_price_cents, } = req.body;
+        const { tenant_id, staff_id, start_at, end_at, total_price_cents } = req.body;
         if (!tenant_id || !staff_id || !start_at || !end_at || !total_price_cents) {
             return res.status(400).json({ error: "Missing required fields" });
         }
