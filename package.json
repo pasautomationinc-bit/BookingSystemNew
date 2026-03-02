@@ -1,4 +1,12 @@
 {
+  "name": "booking-engine",
+  "version": "1.0.0",
+  "main": "dist/db/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/db/server.js",
+    "dev": "ts-node src/db/server.ts"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
