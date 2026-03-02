@@ -14,20 +14,19 @@ export async function createHold(
   const overlaps = await query(
     `SELECT 1 FROM appointments
      WHERE staff_id = $1
-     AND status IN ('hold', 'confirmed')
-     AND tstzrange(start_at, end_at)
-     && tstzrange($2, $3)`,
+       AND status IN ('hold', 'confirmed')
+       AND tstzrange(start_at, end_at)
+           && tstzrange($2, $3)
+     LIMIT 1`,
     [staffId, startAt, endAt]
   );
 
-  if (overlaps.length) {
+  if ((overlaps.rowCount ?? 0) > 0) {
     throw new Error("Time slot already booked");
   }
 
   const appointmentId = uuid();
-  const holdExpiresAt = new Date(
-    Date.now() + HOLD_MINUTES * 60000
-  );
+  const holdExpiresAt = new Date(Date.now() + HOLD_MINUTES * 60000);
 
   await query(
     `INSERT INTO appointments

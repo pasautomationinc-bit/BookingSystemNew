@@ -15,46 +15,51 @@ export async function getAvailableSlots(
   addonIds: string[] = [],
   staffId?: string
 ): Promise<Slot[]> {
-
-  // 1. Get service duration
-  const [service] = await query<{
-    duration_min: number;
-  }>(
+  // 1) Get service duration
+  const serviceRes = await query<{ duration_min: number }>(
     `SELECT duration_min FROM services WHERE id = $1`,
     [serviceId]
   );
 
+  const service = serviceRes.rows[0];
   if (!service) throw new Error("Service not found");
 
-  // 2. Get addon duration
+  // 2) Get addon duration
   let addonDuration = 0;
+
   if (addonIds.length) {
-    const addons = await query<{ extra_duration_min: number }>(
+    const addonsRes = await query<{ extra_duration_min: number }>(
       `SELECT extra_duration_min FROM addons WHERE id = ANY($1)`,
       [addonIds]
     );
-    addonDuration = addons.reduce((sum, a) => sum + a.extra_duration_min, 0);
+
+    addonDuration = addonsRes.rows.reduce(
+      (sum: number, a: { extra_duration_min: number }) => sum + a.extra_duration_min,
+      0
+    );
   }
 
   const totalDuration =
     service.duration_min + addonDuration + CLEANUP_BUFFER_MIN;
 
-  // 3. Get staff list
-  const staffList = staffId
+  // 3) Get staff list
+  const staffList: { id: string }[] = staffId
     ? [{ id: staffId }]
-    : await query<{ id: string }>(
-        `SELECT DISTINCT s.id
-         FROM staff s
-         JOIN staff_services ss ON ss.staff_id = s.id
-         WHERE ss.service_id = $1 AND s.active = true`,
-        [serviceId]
-      );
+    : (
+        await query<{ id: string }>(
+          `SELECT DISTINCT s.id
+           FROM staff s
+           JOIN staff_services ss ON ss.staff_id = s.id
+           WHERE ss.service_id = $1 AND s.active = true`,
+          [serviceId]
+        )
+      ).rows;
 
   const slots: Slot[] = [];
 
   for (const staff of staffList) {
-    // 4. Get working hours
-    const availability = await query<{
+    // 4) Get working hours
+    const availabilityRes = await query<{
       start_time: string;
       end_time: string;
     }>(
@@ -65,6 +70,7 @@ export async function getAvailableSlots(
       [staff.id, date]
     );
 
+    const availability = availabilityRes.rows;
     if (!availability.length) continue;
 
     const { start_time, end_time } = availability[0];
@@ -72,8 +78,8 @@ export async function getAvailableSlots(
     let cursor = new Date(`${date}T${start_time}`);
     const endOfDay = new Date(`${date}T${end_time}`);
 
-    // 5. Existing bookings + holds
-    const busy = await query<{
+    // 5) Existing bookings + holds
+    const busyRes = await query<{
       start_at: Date;
       end_at: Date;
     }>(
@@ -85,12 +91,16 @@ export async function getAvailableSlots(
       [staff.id, date]
     );
 
+    const busy = busyRes.rows;
+
     while (cursor.getTime() + totalDuration * 60000 <= endOfDay.getTime()) {
       const slotEnd = new Date(cursor.getTime() + totalDuration * 60000);
 
-      const overlaps = busy.some(b =>
-        cursor < new Date(b.end_at) && slotEnd > new Date(b.start_at)
-      );
+      const overlaps = busy.some((b) => {
+        const busyStart = new Date(b.start_at);
+        const busyEnd = new Date(b.end_at);
+        return cursor < busyEnd && slotEnd > busyStart;
+      });
 
       if (!overlaps) {
         slots.push({
