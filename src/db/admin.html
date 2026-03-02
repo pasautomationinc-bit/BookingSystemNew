@@ -13,8 +13,6 @@
       .calendar { margin-top:16px; display:grid; grid-template-columns: 120px 1fr; gap:8px; }
       .slot { border:1px solid #ddd; padding:8px; min-height:24px; }
       .booked { background:#ffe8e8; }
-      .muted { color:#777; font-size: 13px; }
-      .error { color:#b00020; font-size: 13px; margin-top: 8px; }
     </style>
   </head>
   <body>
@@ -25,11 +23,8 @@
       <input id="date" type="date" />
       <label>Staff:</label>
       <select id="staff"></select>
-      <button id="refreshBtn" type="button">Refresh</button>
-      <span class="muted">Tip: change date/staff and it auto-refreshes.</span>
+      <button onclick="loadAll()">Refresh</button>
     </div>
-
-    <div id="msg" class="error"></div>
 
     <h3>Bookings</h3>
     <table>
@@ -47,60 +42,35 @@
     <script>
       const API = location.origin;
 
-      function setMsg(text = "") {
-        document.getElementById("msg").textContent = text;
-      }
-
       function isoToLocalTime(iso) {
         const d = new Date(iso);
         return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       }
 
       async function loadStaff() {
-        setMsg("");
-        const sel = document.getElementById("staff");
-        sel.innerHTML = "";
-
         try {
           const res = await fetch(API + "/staff");
-          if (!res.ok) throw new Error(`GET /staff failed (${res.status})`);
           const staff = await res.json();
 
-          // Always include "All"
-          const options = [
-            <option value="">(All)</option>,
-            ...staff.map(s => <option value="${s.id}">${s.name}</option>)
-          ];
-
-          sel.innerHTML = options.join("");
+          const sel = document.getElementById("staff");
+          sel.innerHTML =
+            <option value="">(All)</option> +
+            staff.map(s => <option value="${s.id}">${s.name}</option>).join("");
         } catch (e) {
-          setMsg("Could not load staff list. Make sure GET /staff works.");
-          // still allow page to work without staff list
-          sel.innerHTML = <option value="">(All)</option>;
+          console.error("Failed to load staff", e);
+          alert("Failed to load staff. Open console (F12) to see error.");
         }
       }
 
       async function loadBookings() {
-        setMsg("");
         const date = document.getElementById("date").value;
         const staff_id = document.getElementById("staff").value;
 
-        if (!date) {
-          setMsg("Pick a date first.");
-          return [];
-        }
-
         const url = new URL(API + "/bookings");
-        url.searchParams.set("date", date);
+        if (date) url.searchParams.set("date", date);
         if (staff_id) url.searchParams.set("staff_id", staff_id);
 
-        const res = await fetch(url.toString());
-        if (!res.ok) {
-          const txt = await res.text();
-          setMsg(`GET /bookings failed (${res.status}). ${txt}`);
-          return [];
-        }
-
+        const res = await fetch(url);
         const bookings = await res.json();
 
         const tbody = document.getElementById("rows");
@@ -108,9 +78,9 @@
           <tr>
             <td>${isoToLocalTime(b.start_time)}</td>
             <td>${isoToLocalTime(b.end_time)}</td>
-            <td>${b.service_name || ""}</td>
-            <td>${b.staff_name || ""}</td>
-            <td>${b.customer_name || ""}</td>
+            <td>${b.service_name}</td>
+            <td>${b.staff_name}</td>
+            <td>${b.customer_name}</td>
             <td>${b.customer_phone || ""}</td>
           </tr>
         `).join("");
@@ -125,7 +95,7 @@
         const date = document.getElementById("date").value;
         if (!date) return;
 
-        // 9:00 to 5:00 in 15-min blocks (local)
+        // show 9:00 to 5:00 in 15-min blocks
         const start = new Date(date + "T09:00:00");
         const end = new Date(date + "T17:00:00");
 
@@ -145,9 +115,7 @@
 
           const slotCell = document.createElement("div");
           slotCell.className = "slot" + (hit ? " booked" : "");
-          slotCell.textContent = hit
-            ? `${hit.service_name} • ${hit.customer_name} (${hit.staff_name})`
-            : "";
+          slotCell.textContent = hit ? `${hit.service_name} • ${hit.customer_name} (${hit.staff_name})` : "";
 
           cal.appendChild(timeCell);
           cal.appendChild(slotCell);
@@ -163,11 +131,6 @@
         // default date = today
         const d = new Date();
         document.getElementById("date").value = d.toISOString().slice(0,10);
-
-        // wire events
-        document.getElementById("refreshBtn").addEventListener("click", loadAll);
-        document.getElementById("date").addEventListener("change", loadAll);
-        document.getElementById("staff").addEventListener("change", loadAll);
 
         await loadStaff();
         await loadAll();
