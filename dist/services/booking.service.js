@@ -8,10 +8,11 @@ async function createHold(tenantId, staffId, startAt, endAt, totalPriceCents) {
     // Re-check overlap (safety)
     const overlaps = await (0, db_1.query)(`SELECT 1 FROM appointments
      WHERE staff_id = $1
-     AND status IN ('hold', 'confirmed')
-     AND tstzrange(start_at, end_at)
-     && tstzrange($2, $3)`, [staffId, startAt, endAt]);
-    if (overlaps.length) {
+       AND status IN ('hold', 'confirmed')
+       AND tstzrange(start_at, end_at)
+           && tstzrange($2, $3)
+     LIMIT 1`, [staffId, startAt, endAt]);
+    if ((overlaps.rowCount ?? 0) > 0) {
         throw new Error("Time slot already booked");
     }
     const appointmentId = (0, uuid_1.v4)();

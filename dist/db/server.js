@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 require("dotenv/config");
 const _1 = require(".");
+const booking_service_1 = require("../services/booking.service");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
@@ -229,6 +230,21 @@ app.post("/bookings", async (req, res) => {
         console.error(err);
         return res.status(500).json({
             error: "Failed to create booking",
+        });
+    }
+});
+app.post("/holds", async (req, res) => {
+    try {
+        const { tenant_id, staff_id, start_at, end_at, total_price_cents, } = req.body;
+        if (!tenant_id || !staff_id || !start_at || !end_at || !total_price_cents) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+        const result = await (0, booking_service_1.createHold)(tenant_id, staff_id, new Date(start_at), new Date(end_at), total_price_cents);
+        return res.status(201).json(result);
+    }
+    catch (err) {
+        return res.status(409).json({
+            error: err.message || "Failed to create hold",
         });
     }
 });

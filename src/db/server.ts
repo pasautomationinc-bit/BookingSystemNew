@@ -1,7 +1,10 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
+import path from "path";
+
 import { query } from ".";
+import { createHold } from "../services/booking.service";
 
 type CreateBookingInput = {
   service_id: string;
@@ -14,6 +17,13 @@ type CreateBookingInput = {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+/* ---------------- ADMIN PAGE ---------------- */
+// Serve admin.html from the SAME folder as this file (src/db) in dev,
+// and from dist/db in production build.
+app.get("/admin", (_req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
 
 /* ---------------- HEALTH ---------------- */
 
@@ -77,7 +87,11 @@ app.get("/availability", async (req, res) => {
       "SELECT id, name FROM staff WHERE active = true"
     );
 
-    const availability = [];
+    const availability: Array<{
+      staff_id: string;
+      staff_name: string;
+      slots: string[];
+    }> = [];
 
     for (const staff of staffResult.rows) {
       // 4️⃣ Staff bookings
@@ -104,9 +118,7 @@ app.get("/availability", async (req, res) => {
         slotStart.getTime() + duration * 60_000 <= dayEnd.getTime();
         slotStart = new Date(slotStart.getTime() + slotStepMinutes * 60_000)
       ) {
-        const slotEnd = new Date(
-          slotStart.getTime() + duration * 60_000
-        );
+        const slotEnd = new Date(slotStart.getTime() + duration * 60_000);
 
         const overlaps = bookings.some(
           (b) => b.start_time < slotEnd && b.end_time > slotStart
@@ -147,15 +159,10 @@ app.get("/bookings", async (req, res) => {
     status?: string;
   };
 
-  // If date is missing, you can either require it OR default to today.
-  // I recommend requiring it for clean API behavior.
   if (!date) {
     return res.status(400).json({ error: "date (YYYY-MM-DD) is required" });
   }
 
-  // ⚠️ Timezone note:
-  // This uses your server's timezone unless you add an offset.
-  // If you want fixed timezone, use: ${date}T00:00:00-05:00
   const dayStart = new Date(`${date}T00:00:00-05:00`);
   const dayEnd = new Date(`${date}T23:59:59.999-05:00`);
 
@@ -165,24 +172,20 @@ app.get("/bookings", async (req, res) => {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    // date range
     params.push(dayStart);
     conditions.push(`b.start_time >= $${params.length}`);
 
     params.push(dayEnd);
     conditions.push(`b.start_time <= $${params.length}`);
 
-    // status
     params.push(bookingStatus);
     conditions.push(`b.status = $${params.length}`);
 
-    // optional staff filter
     if (staff_id) {
       params.push(staff_id);
       conditions.push(`b.staff_id = $${params.length}`);
     }
 
-    // optional service filter
     if (service_id) {
       params.push(service_id);
       conditions.push(`b.service_id = $${params.length}`);
@@ -219,26 +222,20 @@ app.get("/bookings", async (req, res) => {
 /* ---------------- BOOKINGS ---------------- */
 
 app.post("/bookings", async (req, res) => {
-  const {
-    service_id,
-    staff_id,
-    customer_name,
-    customer_phone,
-    start_time,
-  } = req.body as {
-    service_id: string;
-    staff_id?: string;
-    customer_name: string;
-    customer_phone?: string;
-    start_time: string;
-  };
+  const { service_id, staff_id, customer_name, customer_phone, start_time } =
+    req.body as {
+      service_id: string;
+      staff_id?: string;
+      customer_name: string;
+      customer_phone?: string;
+      start_time: string;
+    };
 
   if (!service_id || !customer_name?.trim() || !start_time) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // 1️⃣ Service duration
     const serviceResult = await query<{ duration_minutes: number }>(
       "SELECT duration_minutes FROM services WHERE id = $1",
       [service_id]
@@ -255,7 +252,7 @@ app.post("/bookings", async (req, res) => {
 
     let assignedStaffId = staff_id;
 
-    // 2️⃣ AUTO-ASSIGN STAFF IF NOT PROVIDED
+    // AUTO-ASSIGN STAFF IF NOT PROVIDED
     if (!assignedStaffId) {
       const availableStaff = await query<{ id: string }>(
         `
@@ -285,7 +282,6 @@ app.post("/bookings", async (req, res) => {
       assignedStaffId = availableStaff.rows[0].id;
     }
 
-    // 3️⃣ Insert booking (DB constraint still protects)
     const bookingResult = await query<{ id: string }>(
       `
       INSERT INTO bookings (
@@ -299,14 +295,7 @@ app.post("/bookings", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
       `,
-      [
-        service_id,
-        assignedStaffId,
-        customer_name,
-        customer_phone,
-        start,
-        end,
-      ]
+      [service_id, assignedStaffId, customer_name, customer_phone, start, end]
     );
 
     return res.status(201).json({
@@ -314,9 +303,7 @@ app.post("/bookings", async (req, res) => {
       staff_id: assignedStaffId,
       status: "confirmed",
     });
-
   } catch (err: any) {
-    // 🔒 DB overlap protection
     if (err.code === "23P01") {
       return res.status(409).json({
         error: "Time slot already booked",
@@ -326,6 +313,39 @@ app.post("/bookings", async (req, res) => {
     console.error(err);
     return res.status(500).json({
       error: "Failed to create booking",
+    });
+  }
+});
+
+/* ---------------- HOLDS ---------------- */
+
+app.post("/holds", async (req, res) => {
+  try {
+    const { tenant_id, staff_id, start_at, end_at, total_price_cents } =
+      req.body as {
+        tenant_id: string;
+        staff_id: string;
+        start_at: string;
+        end_at: string;
+        total_price_cents: number;
+      };
+
+    if (!tenant_id || !staff_id || !start_at || !end_at || !total_price_cents) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const result = await createHold(
+      tenant_id,
+      staff_id,
+      new Date(start_at),
+      new Date(end_at),
+      total_price_cents
+    );
+
+    return res.status(201).json(result);
+  } catch (err: any) {
+    return res.status(409).json({
+      error: err.message || "Failed to create hold",
     });
   }
 });

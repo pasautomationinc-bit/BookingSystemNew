@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Booking Admin</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 16px; }
+      .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+      input, select, button { padding: 8px; }
+      table { border-collapse: collapse; width:100%; margin-top:16px; }
+      th, td { border:1px solid #ddd; padding:8px; font-size: 14px; }
+      th { background:#f4f4f4; text-align:left; }
+      .calendar { margin-top:16px; display:grid; grid-template-columns: 120px 1fr; gap:8px; }
+      .slot { border:1px solid #ddd; padding:8px; min-height:24px; }
+      .booked { background:#ffe8e8; }
+    </style>
+  </head>
+  <body>
+    <h2>Booking Admin (Local)</h2>
+
+    <div class="row">
+      <label>Date:</label>
+      <input id="date" type="date" />
+      <label>Staff:</label>
+      <select id="staff"></select>
+      <button onclick="loadAll()">Refresh</button>
+    </div>
+
+    <h3>Bookings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <h3>Day Calendar</h3>
+    <div id="cal" class="calendar"></div>
+
+    <script>
+      const API = location.origin;
+
+      function isoToLocalTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+
+      async function loadStaff() {
+        // assumes you have staff table + active=true
+        const res = await fetch(API + "/staff");
+        const staff = await res.json();
+        const sel = document.getElementById("staff");
+        sel.innerHTML = <option value="">(All)</option> + staff.map(s => <option value="${s.id}">${s.name}</option>).join("");
+      }
+
+      async function loadBookings() {
+        const date = document.getElementById("date").value;
+        const staff_id = document.getElementById("staff").value;
+
+        const url = new URL(API + "/bookings");
+        if (date) url.searchParams.set("date", date);
+        if (staff_id) url.searchParams.set("staff_id", staff_id);
+
+        const res = await fetch(url);
+        const bookings = await res.json();
+
+        const tbody = document.getElementById("rows");
+        tbody.innerHTML = bookings.map(b => `
+          <tr>
+            <td>${isoToLocalTime(b.start_time)}</td>
+            <td>${isoToLocalTime(b.end_time)}</td>
+            <td>${b.service_name}</td>
+            <td>${b.staff_name}</td>
+            <td>${b.customer_name}</td>
+            <td>${b.customer_phone || ""}</td>
+          </tr>
+        `).join("");
+
+        return bookings;
+      }
+
+      function buildCalendar(bookings) {
+        const cal = document.getElementById("cal");
+        cal.innerHTML = "";
+
+        // show 9:00 to 5:00 in 15-min blocks
+        const date = document.getElementById("date").value;
+        if (!date) return;
+
+        const start = new Date(date + "T09:00:00");
+        const end = new Date(date + "T17:00:00");
+
+        for (let t = new Date(start); t < end; t = new Date(t.getTime() + 15*60000)) {
+          const label = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const slotStart = t;
+          const slotEnd = new Date(t.getTime() + 15*60000);
+
+          const hit = bookings.find(b => {
+            const bs = new Date(b.start_time);
+            const be = new Date(b.end_time);
+            return bs < slotEnd && be > slotStart;
+          });
+
+          const timeCell = document.createElement("div");
+          timeCell.textContent = label;
+
+          const slotCell = document.createElement("div");
+          slotCell.className = "slot" + (hit ? " booked" : "");
+          slotCell.textContent = hit ? `${hit.service_name} • ${hit.customer_name} (${hit.staff_name})` : "";
+
+          cal.appendChild(timeCell);
+          cal.appendChild(slotCell);
+        }
+      }
+
+      async function loadAll() {
+        const bookings = await loadBookings();
+        buildCalendar(bookings);
+      }
+
+      // you need this endpoint:
+      // GET /staff -> [{id,name}]
+      async function init() {
+        // default date = today
+        const d = new Date();
+        document.getElementById("date").value = d.toISOString().slice(0,10);
+
+        await loadStaff();
+        await loadAll();
+      }
+
+      init();
+    </script>
+  </body>
+</html>
