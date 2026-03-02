@@ -3,53 +3,174 @@
   <head>
     <meta charset="utf-8" />
     <title>Booking Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font-family: Arial, sans-serif; padding: 16px; }
-      .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-      input, select, button { padding: 8px; }
-      table { border-collapse: collapse; width:100%; margin-top:16px; }
-      th, td { border:1px solid #ddd; padding:8px; font-size: 14px; }
-      th { background:#f4f4f4; text-align:left; }
-      .calendar { margin-top:16px; display:grid; grid-template-columns: 120px 1fr; gap:8px; }
-      .slot { border:1px solid #ddd; padding:8px; min-height:24px; }
-      .booked { background:#ffe8e8; }
-      .status { margin: 10px 0; padding: 8px; background: #f7f7f7; border: 1px solid #ddd; font-size: 13px; }
-      .status.error { background: #ffecec; border-color: #ffb3b3; }
+      :root{
+        --bg:#ffffff;
+        --muted:#6b7280;
+        --border:#e5e7eb;
+        --soft:#f9fafb;
+        --card:#ffffff;
+        --shadow: 0 10px 24px rgba(0,0,0,.06);
+        --shadow2: 0 6px 14px rgba(0,0,0,.06);
+        --radius: 16px;
+      }
+      body { font-family: Arial, sans-serif; margin:0; background:var(--soft); color:#111827; }
+      header{
+        background:var(--bg);
+        border-bottom:1px solid var(--border);
+        position:sticky; top:0; z-index:10;
+      }
+      .wrap{ max-width: 980px; margin: 0 auto; padding: 14px 16px; }
+      .titleRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      h1{ font-size:18px; margin:0; }
+      .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+      input, select, button { padding: 10px 12px; border:1px solid var(--border); border-radius: 12px; background:#fff; }
+      button{ cursor:pointer; box-shadow: var(--shadow2); }
+      button:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+
+      main{ max-width: 980px; margin: 0 auto; padding: 16px; }
+
+      .stepTitle{ margin: 18px 0 10px; font-size: 14px; color: var(--muted); font-weight: 700; letter-spacing:.2px; }
+
+      .grid{
+        display:grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      @media (min-width: 720px){
+        .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+
+      .card{
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        box-shadow: var(--shadow);
+        cursor:pointer;
+        transition: transform .08s ease, border-color .08s ease;
+        user-select:none;
+        min-height: 92px;
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+      }
+      .card:hover{ transform: translateY(-1px); border-color:#cbd5e1; }
+      .card.selected{ outline: 2px solid #111827; }
+      .cardTop{ display:flex; justify-content:space-between; gap:10px; }
+      .cardTitle{ font-weight:800; }
+      .pill{
+        font-size:12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background:#f3f4f6;
+        color:#111827;
+        white-space:nowrap;
+      }
+      .sub{ font-size:13px; color:var(--muted); margin-top:6px; }
+      .price{ font-weight:800; margin-top:10px; }
+
+      .row{
+        display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+      }
+
+      .slots{
+        display:grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      @media (min-width: 720px){
+        .slots{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+      .slotBtn{
+        background:#fff;
+        border:1px solid var(--border);
+        border-radius: 14px;
+        padding: 10px 10px;
+        cursor:pointer;
+        text-align:center;
+        box-shadow: var(--shadow2);
+      }
+      .slotBtn:hover{ border-color:#cbd5e1; }
+      .slotBtn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+
+      .panel{
+        background:#fff;
+        border:1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        box-shadow: var(--shadow);
+      }
+
+      table { border-collapse: collapse; width:100%; margin-top:10px; }
+      th, td { border:1px solid #eee; padding:8px; font-size: 14px; }
+      th { background:#f7f7f7; text-align:left; }
+      .msg{ margin-top:10px; color: var(--muted); font-size: 13px; }
+      .ok{ color:#065f46; }
+      .err{ color:#991b1b; }
     </style>
   </head>
+
   <body>
-    <h2>Booking Admin (Local)</h2>
+    <header>
+      <div class="wrap">
+        <div class="titleRow">
+          <h1>Booking Admin (Local)</h1>
+          <div class="controls">
+            <label style="font-size:13px;color:var(--muted);font-weight:700;">Date</label>
+            <input id="date" type="date" />
+            <button id="refreshBtn">Refresh</button>
+          </div>
+        </div>
+      </div>
+    </header>
 
-    <div id="status" class="status">Status: loading…</div>
+    <main>
+      <div class="stepTitle">1) Choose a service</div>
+      <div id="servicesGrid" class="grid"></div>
 
-    <div class="row">
-      <label>Date:</label>
-      <input id="date" type="date" />
-      <label>Staff:</label>
-      <select id="staff"></select>
-      <button id="refreshBtn">Refresh</button>
-    </div>
+      <div class="stepTitle">2) Choose a professional</div>
+      <div id="staffGrid" class="grid"></div>
 
-    <h3>Bookings</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+      <div class="stepTitle">3) Choose a time</div>
+      <div id="slotsWrap" class="panel">
+        <div id="slots" class="slots"></div>
+        <div id="slotsMsg" class="msg">Pick a service first.</div>
+      </div>
 
-    <h3>Day Calendar</h3>
-    <div id="cal" class="calendar"></div>
+      <div class="stepTitle">Bookings for selected day</div>
+      <div class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="bookingsMsg" class="msg"></div>
+      </div>
+
+      <div id="toast" class="msg"></div>
+    </main>
 
     <script>
       const API = location.origin;
 
-      function setStatus(msg, isError=false) {
-        const el = document.getElementById("status");
-        el.textContent = "Status: " + msg;
-        el.className = "status" + (isError ? " error" : "");
+      let state = {
+        services: [],
+        staff: [],
+        availability: null,
+        selectedServiceId: "",
+        selectedStaffId: "",
+      };
+
+      const el = (id) => document.getElementById(id);
+
+      function moneyFromCents(cents){
+        if (typeof cents !== "number") return "";
+        return "$" + (cents/100).toFixed(2);
       }
 
       function isoToLocalTime(iso) {
@@ -57,55 +178,191 @@
         return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       }
 
-      async function loadStaff() {
-        const sel = document.getElementById("staff");
-
-        // prove script is running
-        sel.innerHTML = <option value="">Loading staff…</option>;
-
-        try {
-          setStatus("Fetching /staff …");
-          const res = await fetch(API + "/staff", { cache: "no-store" });
-
-          if (!res.ok) {
-            const text = await res.text();
-            setStatus(`GET /staff failed (${res.status}). Response: ${text}`, true);
-            sel.innerHTML = <option value="">(All)</option>;
-            return;
-          }
-
-          const staff = await res.json();
-
-          if (!Array.isArray(staff)) {
-            setStatus("GET /staff did not return an array. Check API response.", true);
-            sel.innerHTML = <option value="">(All)</option>;
-            return;
-          }
-
-          sel.innerHTML =
-            <option value="">(All)</option> +
-            staff.map(s => <option value="${s.id}">${s.name}</option>).join("");
-
-          setStatus(`Loaded ${staff.length} staff.`);
-        } catch (e) {
-          setStatus("Error loading staff: " + (e?.message || e), true);
-          sel.innerHTML = <option value="">(All)</option>;
-        }
+      function setToast(msg, kind=""){
+        const t = el("toast");
+        t.className = "msg " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "");
+        t.textContent = msg || "";
       }
 
-      async function loadBookings() {
-        const date = document.getElementById("date").value;
-        const staff_id = document.getElementById("staff").value;
+      async function fetchJSON(url, opts){
+        const res = await fetch(url, opts);
+        const txt = await res.text();
+        let data;
+        try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
+        if (!res.ok) {
+          const message = (data && data.error) ? data.error : ("HTTP " + res.status);
+          throw new Error(message);
+        }
+        return data;
+      }
 
-        const url = new URL(API + "/bookings");
-        if (date) url.searchParams.set("date", date);
-        if (staff_id) url.searchParams.set("staff_id", staff_id);
+      // -------------------- LOAD BASE DATA --------------------
 
-        const res = await fetch(url.toString(), { cache: "no-store" });
-        const bookings = await res.json();
+      async function loadServices(){
+        state.services = await fetchJSON(API + "/services");
+        renderServices();
+      }
 
-        const tbody = document.getElementById("rows");
-        tbody.innerHTML = (Array.isArray(bookings) ? bookings : []).map(b => `
+      async function loadStaff(){
+        // You already have /staff returning [{id,name}]
+        state.staff = await fetchJSON(API + "/staff");
+        renderStaff(); // will show "choose a service first" until availability is loaded
+      }
+
+      // -------------------- RENDER --------------------
+
+      function renderServices(){
+        const grid = el("servicesGrid");
+        grid.innerHTML = state.services.map(s => {
+          const selected = s.id === state.selectedServiceId ? "selected" : "";
+          return `
+            <div class="card ${selected}" data-service="${s.id}">
+              <div class="cardTop">
+                <div class="cardTitle">${s.name}</div>
+                <div class="pill">${s.duration_minutes} min</div>
+              </div>
+              <div class="price">${moneyFromCents(s.price_cents)}</div>
+            </div>
+          `;
+        }).join("");
+
+        grid.querySelectorAll("[data-service]").forEach(card => {
+          card.addEventListener("click", async () => {
+            state.selectedServiceId = card.getAttribute("data-service");
+            state.selectedStaffId = ""; // reset
+            renderServices();
+            renderStaff();
+            await refreshAvailabilityAndBookings();
+          });
+        });
+      }
+
+      function renderStaff(){
+        const grid = el("staffGrid");
+
+        if (!state.selectedServiceId){
+          grid.innerHTML = `
+            <div class="panel" style="grid-column:1/-1;">
+              <div class="msg">Choose a service first to see professionals.</div>
+            </div>
+          `;
+          return;
+        }
+
+        // If we have availability, we can show "Available Today" style text
+        const availMap = new Map();
+        if (state.availability && Array.isArray(state.availability.availability)){
+          for (const a of state.availability.availability){
+            availMap.set(a.staff_id, a.slots || []);
+          }
+        }
+
+        grid.innerHTML = state.staff.map(s => {
+          const selected = s.id === state.selectedStaffId ? "selected" : "";
+          const slots = availMap.get(s.id) || [];
+          const next = slots.length ? isoToLocalTime(slots[0]) : "No slots";
+          const pill = slots.length ? "Available " + next : "Unavailable";
+          return `
+            <div class="card ${selected}" data-staff="${s.id}">
+              <div class="cardTop">
+                <div class="cardTitle">${s.name}</div>
+                <div class="pill">${pill}</div>
+              </div>
+              <div class="sub">Tap to view times</div>
+            </div>
+          `;
+        }).join("");
+
+        grid.querySelectorAll("[data-staff]").forEach(card => {
+          card.addEventListener("click", () => {
+            state.selectedStaffId = card.getAttribute("data-staff");
+            renderStaff();
+            renderSlots();
+          });
+        });
+      }
+
+      function renderSlots(){
+        const slotsEl = el("slots");
+        const msgEl = el("slotsMsg");
+        slotsEl.innerHTML = "";
+
+        if (!state.selectedServiceId){
+          msgEl.textContent = "Pick a service first.";
+          return;
+        }
+
+        if (!state.availability){
+          msgEl.textContent = "Loading availability...";
+          return;
+        }
+
+        // Choose staff availability: if staff selected, show only that staff.
+        let staffAvail = state.availability.availability || [];
+        if (state.selectedStaffId){
+          staffAvail = staffAvail.filter(x => x.staff_id === state.selectedStaffId);
+        }
+
+        const combinedSlots = [];
+        for (const a of staffAvail){
+          for (const iso of (a.slots || [])){
+            combinedSlots.push({ staff_id: a.staff_id, staff_name: a.staff_name, start_time: iso });
+          }
+        }
+
+        if (!combinedSlots.length){
+          msgEl.textContent = state.selectedStaffId
+            ? "No available times for this professional."
+            : "Select a professional (or none available).";
+          return;
+        }
+
+        msgEl.textContent = state.selectedStaffId ? "" : "Showing times (choose a professional to narrow down).";
+
+        // show first 40 slots to keep UI clean
+        const show = combinedSlots.slice(0, 40);
+
+        slotsEl.innerHTML = show.map(s => {
+          return `<button class="slotBtn" data-staff="${s.staff_id}" data-start="${s.start_time}">
+            ${isoToLocalTime(s.start_time)}
+          </button>`;
+        }).join("");
+
+        slotsEl.querySelectorAll("[data-start]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const staff_id = btn.getAttribute("data-staff");
+            const start_time = btn.getAttribute("data-start");
+
+            // quick prompt for customer name (admin tool)
+            const customer_name = prompt("Customer name?");
+            if (!customer_name) return;
+
+            const customer_phone = prompt("Customer phone (optional)?") || "";
+
+            try{
+              const result = await fetchJSON(API + "/bookings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  service_id: state.selectedServiceId,
+                  staff_id,
+                  customer_name,
+                  customer_phone: customer_phone.trim() ? customer_phone.trim() : undefined,
+                  start_time
+                })
+              });
+              setToast("Booked ✅ " + isoToLocalTime(start_time), "ok");
+              await refreshAvailabilityAndBookings();
+            }catch(e){
+              setToast("Booking failed: " + e.message, "err");
+            }
+          });
+        });
+      }
+
+      function renderBookingsTable(bookings){
+        const tbody = el("rows");
+        tbody.innerHTML = (bookings || []).map(b => `
           <tr>
             <td>${isoToLocalTime(b.start_time)}</td>
             <td>${isoToLocalTime(b.end_time)}</td>
@@ -116,61 +373,68 @@
           </tr>
         `).join("");
 
-        return Array.isArray(bookings) ? bookings : [];
+        el("bookingsMsg").textContent = bookings?.length ? "" : "No bookings for this day.";
       }
 
-      function buildCalendar(bookings) {
-        const cal = document.getElementById("cal");
-        cal.innerHTML = "";
+      // -------------------- REFRESH --------------------
 
-        const date = document.getElementById("date").value;
-        if (!date) return;
+      async function refreshAvailabilityAndBookings(){
+        const date = el("date").value;
+        if (!date){
+          setToast("Pick a date.", "err");
+          return;
+        }
 
-        const start = new Date(date + "T09:00:00");
-        const end = new Date(date + "T17:00:00");
+        // availability needs date + service_id
+        if (state.selectedServiceId){
+          try{
+            state.availability = await fetchJSON(
+              `${API}/availability?service_id=${encodeURIComponent(state.selectedServiceId)}&date=${encodeURIComponent(date)}`
+            );
+          }catch(e){
+            state.availability = null;
+            setToast("Availability error: " + e.message, "err");
+          }
+        } else {
+          state.availability = null;
+        }
 
-        for (let t = new Date(start); t < end; t = new Date(t.getTime() + 15*60000)) {
-          const label = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-          const slotStart = t;
-          const slotEnd = new Date(t.getTime() + 15*60000);
+        // bookings table for day (optionally filter by staff)
+        try{
+          const url = new URL(API + "/bookings");
+          url.searchParams.set("date", date);
+          if (state.selectedStaffId) url.searchParams.set("staff_id", state.selectedStaffId);
 
-          const hit = bookings.find(b => {
-            const bs = new Date(b.start_time);
-            const be = new Date(b.end_time);
-            return bs < slotEnd && be > slotStart;
-          });
+          const bookings = await fetchJSON(url.toString());
+          renderBookingsTable(bookings);
+        }catch(e){
+          renderBookingsTable([]);
+          setToast("Bookings error: " + e.message, "err");
+        }
 
-          const timeCell = document.createElement("div");
-          timeCell.textContent = label;
+        renderStaff();
+        renderSlots();
+      }
 
-          const slotCell = document.createElement("div");
-          slotCell.className = "slot" + (hit ? " booked" : "");
-          slotCell.textContent = hit ? `${hit.service_name} • ${hit.customer_name} (${hit.staff_name})` : "";
+      // -------------------- INIT --------------------
 
-          cal.appendChild(timeCell);
-          cal.appendChild(slotCell);
+      async function init(){
+        const d = new Date();
+        el("date").value = d.toISOString().slice(0,10);
+
+        el("refreshBtn").addEventListener("click", refreshAvailabilityAndBookings);
+        el("date").addEventListener("change", refreshAvailabilityAndBookings);
+
+        try{
+          await Promise.all([loadServices(), loadStaff()]);
+          await refreshAvailabilityAndBookings();
+          setToast("");
+        }catch(e){
+          setToast("Init error: " + e.message, "err");
         }
       }
 
-      async function loadAll() {
-        const bookings = await loadBookings();
-        buildCalendar(bookings);
-      }
-
-      async function init() {
-        // default date = today
-        const d = new Date();
-        document.getElementById("date").value = d.toISOString().slice(0,10);
-
-        document.getElementById("refreshBtn").addEventListener("click", loadAll);
-        document.getElementById("staff").addEventListener("change", loadAll);
-        document.getElementById("date").addEventListener("change", loadAll);
-
-        await loadStaff();
-        await loadAll();
-      }
-
-      window.addEventListener("load", init);
+      init();
     </script>
   </body>
 </html>
