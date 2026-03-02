@@ -13,17 +13,21 @@
       .calendar { margin-top:16px; display:grid; grid-template-columns: 120px 1fr; gap:8px; }
       .slot { border:1px solid #ddd; padding:8px; min-height:24px; }
       .booked { background:#ffe8e8; }
+      .status { margin: 10px 0; padding: 8px; background: #f7f7f7; border: 1px solid #ddd; font-size: 13px; }
+      .status.error { background: #ffecec; border-color: #ffb3b3; }
     </style>
   </head>
   <body>
     <h2>Booking Admin (Local)</h2>
+
+    <div id="status" class="status">Status: loading…</div>
 
     <div class="row">
       <label>Date:</label>
       <input id="date" type="date" />
       <label>Staff:</label>
       <select id="staff"></select>
-      <button onclick="loadAll()">Refresh</button>
+      <button id="refreshBtn">Refresh</button>
     </div>
 
     <h3>Bookings</h3>
@@ -42,23 +46,50 @@
     <script>
       const API = location.origin;
 
+      function setStatus(msg, isError=false) {
+        const el = document.getElementById("status");
+        el.textContent = "Status: " + msg;
+        el.className = "status" + (isError ? " error" : "");
+      }
+
       function isoToLocalTime(iso) {
         const d = new Date(iso);
         return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       }
 
       async function loadStaff() {
+        const sel = document.getElementById("staff");
+
+        // prove script is running
+        sel.innerHTML = <option value="">Loading staff…</option>;
+
         try {
-          const res = await fetch(API + "/staff");
+          setStatus("Fetching /staff …");
+          const res = await fetch(API + "/staff", { cache: "no-store" });
+
+          if (!res.ok) {
+            const text = await res.text();
+            setStatus(`GET /staff failed (${res.status}). Response: ${text}`, true);
+            sel.innerHTML = <option value="">(All)</option>;
+            return;
+          }
+
           const staff = await res.json();
 
-          const sel = document.getElementById("staff");
+          if (!Array.isArray(staff)) {
+            setStatus("GET /staff did not return an array. Check API response.", true);
+            sel.innerHTML = <option value="">(All)</option>;
+            return;
+          }
+
           sel.innerHTML =
             <option value="">(All)</option> +
             staff.map(s => <option value="${s.id}">${s.name}</option>).join("");
+
+          setStatus(`Loaded ${staff.length} staff.`);
         } catch (e) {
-          console.error("Failed to load staff", e);
-          alert("Failed to load staff. Open console (F12) to see error.");
+          setStatus("Error loading staff: " + (e?.message || e), true);
+          sel.innerHTML = <option value="">(All)</option>;
         }
       }
 
@@ -70,11 +101,11 @@
         if (date) url.searchParams.set("date", date);
         if (staff_id) url.searchParams.set("staff_id", staff_id);
 
-        const res = await fetch(url);
+        const res = await fetch(url.toString(), { cache: "no-store" });
         const bookings = await res.json();
 
         const tbody = document.getElementById("rows");
-        tbody.innerHTML = bookings.map(b => `
+        tbody.innerHTML = (Array.isArray(bookings) ? bookings : []).map(b => `
           <tr>
             <td>${isoToLocalTime(b.start_time)}</td>
             <td>${isoToLocalTime(b.end_time)}</td>
@@ -85,7 +116,7 @@
           </tr>
         `).join("");
 
-        return bookings;
+        return Array.isArray(bookings) ? bookings : [];
       }
 
       function buildCalendar(bookings) {
@@ -95,7 +126,6 @@
         const date = document.getElementById("date").value;
         if (!date) return;
 
-        // show 9:00 to 5:00 in 15-min blocks
         const start = new Date(date + "T09:00:00");
         const end = new Date(date + "T17:00:00");
 
@@ -132,11 +162,15 @@
         const d = new Date();
         document.getElementById("date").value = d.toISOString().slice(0,10);
 
+        document.getElementById("refreshBtn").addEventListener("click", loadAll);
+        document.getElementById("staff").addEventListener("change", loadAll);
+        document.getElementById("date").addEventListener("change", loadAll);
+
         await loadStaff();
         await loadAll();
       }
 
-      init();
+      window.addEventListener("load", init);
     </script>
   </body>
 </html>
