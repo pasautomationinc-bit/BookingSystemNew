@@ -1,440 +1,494 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Booking Admin</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      :root{
-        --bg:#ffffff;
-        --muted:#6b7280;
-        --border:#e5e7eb;
-        --soft:#f9fafb;
-        --card:#ffffff;
-        --shadow: 0 10px 24px rgba(0,0,0,.06);
-        --shadow2: 0 6px 14px rgba(0,0,0,.06);
-        --radius: 16px;
-      }
-      body { font-family: Arial, sans-serif; margin:0; background:var(--soft); color:#111827; }
-      header{
-        background:var(--bg);
-        border-bottom:1px solid var(--border);
-        position:sticky; top:0; z-index:10;
-      }
-      .wrap{ max-width: 980px; margin: 0 auto; padding: 14px 16px; }
-      .titleRow{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      h1{ font-size:18px; margin:0; }
-      .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-      input, select, button { padding: 10px 12px; border:1px solid var(--border); border-radius: 12px; background:#fff; }
-      button{ cursor:pointer; box-shadow: var(--shadow2); }
-      button:disabled{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Dashboard</title>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#111827; --muted:#6b7280;
+      --border:#e5e7eb; --shadow:0 10px 24px rgba(0,0,0,.06);
+      --radius:16px; --btn:#111827; --btnText:#fff; --danger:#ef4444; --ok:#065f46;
+    }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:var(--bg); color:var(--text); }
+    header{ background:#fff; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:14px 16px; }
+    h1{ margin:0; font-size:18px; }
+    .tabs{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    .tab{ padding:10px 12px; border:1px solid var(--border); border-radius:999px; background:#fff; cursor:pointer; }
+    .tab.active{ background:var(--btn); color:var(--btnText); border-color:var(--btn); }
+    main{ max-width:1100px; margin:0 auto; padding:16px; }
+    .grid{ display:grid; gap:12px; }
+    @media (min-width: 900px){ .grid.cols2{ grid-template-columns: 1fr 1fr; } }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    input, select, button, textarea{
+      padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text);
+    }
+    button{ cursor:pointer; background:var(--btn); color:var(--btnText); border-color:var(--btn); }
+    button.secondary{ background:#fff; color:var(--text); border-color:var(--border); }
+    button.danger{ background:var(--danger); border-color:var(--danger); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .muted{ color:var(--muted); font-size:13px; }
+    .msg{ margin-top:10px; font-size:13px; }
+    .msg.ok{ color:var(--ok); }
+    .msg.err{ color:var(--danger); white-space:pre-wrap; }
+    table{ border-collapse:collapse; width:100%; margin-top:10px; overflow:hidden; border-radius:12px; }
+    th, td{ border-bottom:1px solid var(--border); padding:10px; font-size:14px; }
+    th{ background:#fafafa; text-align:left; color:#374151; }
+    .pill{ display:inline-block; padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted); background:#fff; }
+    .divider{ height:1px; background:var(--border); margin:12px 0; }
+    .days{ display:grid; gap:10px; grid-template-columns: 1fr; }
+    @media(min-width:720px){ .days{ grid-template-columns: 1fr 1fr; } }
+    .dayRow{ display:flex; gap:10px; align-items:center; }
+    .dayRow label{ width:90px; font-weight:700; color:#374151; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Admin Dashboard</h1>
+      <div class="tabs">
+        <div class="tab active" data-tab="staff">Staff</div>
+        <div class="tab" data-tab="services">Services</div>
+        <div class="tab" data-tab="hours">Working Hours</div>
+        <div class="tab" data-tab="bookings">Bookings</div>
+      </div>
+      <div id="globalMsg" class="msg"></div>
+    </div>
+  </header>
 
-      main{ max-width: 980px; margin: 0 auto; padding: 16px; }
+  <main>
+    <!-- STAFF -->
+    <section id="tab-staff" class="grid cols2">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="pill">Add Staff</div>
+            <div class="muted" style="margin-top:6px;">Create new staff (shows immediately in booking flow).</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <input id="newStaffName" placeholder="Staff name (e.g., Mike)" />
+          <button id="btnAddStaff">Add</button>
+        </div>
+        <div id="staffAddMsg" class="msg"></div>
+      </div>
 
-      .stepTitle{ margin: 18px 0 10px; font-size: 14px; color: var(--muted); font-weight: 700; letter-spacing:.2px; }
+      <div class="card">
+        <div class="pill">Staff List</div>
+        <div class="muted" style="margin-top:6px;">Enable/Disable staff (soft delete).</div>
+        <div class="divider"></div>
+        <table>
+          <thead><tr><th>Name</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="staffRows"></tbody>
+        </table>
+      </div>
+    </section>
 
-      .grid{
-        display:grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
-      @media (min-width: 720px){
-        .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      }
+    <!-- SERVICES -->
+    <section id="tab-services" class="grid cols2" style="display:none;">
+      <div class="card">
+        <div class="pill">Add Service</div>
+        <div class="muted" style="margin-top:6px;">Services drive duration & pricing.</div>
+        <div class="divider"></div>
 
-      .card{
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 14px;
-        box-shadow: var(--shadow);
-        cursor:pointer;
-        transition: transform .08s ease, border-color .08s ease;
-        user-select:none;
-        min-height: 92px;
-        display:flex;
-        flex-direction:column;
-        justify-content:space-between;
-      }
-      .card:hover{ transform: translateY(-1px); border-color:#cbd5e1; }
-      .card.selected{ outline: 2px solid #111827; }
-      .cardTop{ display:flex; justify-content:space-between; gap:10px; }
-      .cardTitle{ font-weight:800; }
-      .pill{
-        font-size:12px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background:#f3f4f6;
-        color:#111827;
-        white-space:nowrap;
-      }
-      .sub{ font-size:13px; color:var(--muted); margin-top:6px; }
-      .price{ font-weight:800; margin-top:10px; }
+        <div class="row">
+          <input id="svcName" placeholder="Service name (e.g., Haircut)" />
+          <input id="svcDuration" type="number" min="5" step="5" placeholder="Duration (min)" />
+          <input id="svcPrice" type="number" min="0" step="0.01" placeholder="Price ($)" />
+          <button id="btnAddService">Add</button>
+        </div>
+        <div id="svcAddMsg" class="msg"></div>
+      </div>
 
-      .row{
-        display:flex; gap:12px; flex-wrap:wrap; align-items:center;
-      }
+      <div class="card">
+        <div class="pill">Service List (Edit)</div>
+        <div class="muted" style="margin-top:6px;">Edit name/duration/price and save.</div>
+        <div class="divider"></div>
 
-      .slots{
-        display:grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      @media (min-width: 720px){
-        .slots{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      }
-      .slotBtn{
-        background:#fff;
-        border:1px solid var(--border);
-        border-radius: 14px;
-        padding: 10px 10px;
-        cursor:pointer;
-        text-align:center;
-        box-shadow: var(--shadow2);
-      }
-      .slotBtn:hover{ border-color:#cbd5e1; }
-      .slotBtn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Duration</th><th>Price</th><th>Save</th></tr>
+          </thead>
+          <tbody id="svcRows"></tbody>
+        </table>
+      </div>
+    </section>
 
-      .panel{
-        background:#fff;
-        border:1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 14px;
-        box-shadow: var(--shadow);
-      }
+    <!-- HOURS -->
+    <section id="tab-hours" class="grid cols2" style="display:none;">
+      <div class="card">
+        <div class="pill">Select Staff</div>
+        <div class="muted" style="margin-top:6px;">Set weekly working hours per staff.</div>
+        <div class="divider"></div>
 
-      table { border-collapse: collapse; width:100%; margin-top:10px; }
-      th, td { border:1px solid #eee; padding:8px; font-size: 14px; }
-      th { background:#f7f7f7; text-align:left; }
-      .msg{ margin-top:10px; color: var(--muted); font-size: 13px; }
-      .ok{ color:#065f46; }
-      .err{ color:#991b1b; }
-    </style>
-  </head>
+        <div class="row">
+          <select id="hoursStaff"></select>
+          <button class="secondary" id="btnLoadHours">Load</button>
+        </div>
 
-  <body>
-    <header>
-      <div class="wrap">
-        <div class="titleRow">
-          <h1>Booking Admin (Local)</h1>
-          <div class="controls">
-            <label style="font-size:13px;color:var(--muted);font-weight:700;">Date</label>
-            <input id="date" type="date" />
-            <button id="refreshBtn">Refresh</button>
+        <div class="divider"></div>
+
+        <div class="days" id="hoursForm"></div>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="btnSaveHours">Save Hours</button>
+        </div>
+        <div id="hoursMsg" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="pill">How it works</div>
+        <div class="muted" style="margin-top:6px;">
+          Availability uses <b>staff_availability</b> for the selected day-of-week.
+          If a staff member has no hours for that day, they show no available times.
+        </div>
+        <div class="divider"></div>
+        <div class="muted">
+          Day of week (Postgres):
+          <div style="margin-top:8px;">
+            <b>0</b>=Sun, <b>1</b>=Mon, <b>2</b>=Tue, <b>3</b>=Wed, <b>4</b>=Thu, <b>5</b>=Fri, <b>6</b>=Sat
           </div>
         </div>
       </div>
-    </header>
+    </section>
 
-    <main>
-      <div class="stepTitle">1) Choose a service</div>
-      <div id="servicesGrid" class="grid"></div>
+    <!-- BOOKINGS -->
+    <section id="tab-bookings" class="grid cols2" style="display:none;">
+      <div class="card">
+        <div class="pill">Filter</div>
+        <div class="muted" style="margin-top:6px;">View confirmed bookings by date and cancel if needed.</div>
+        <div class="divider"></div>
 
-      <div class="stepTitle">2) Choose a professional</div>
-      <div id="staffGrid" class="grid"></div>
-
-      <div class="stepTitle">3) Choose a time</div>
-      <div id="slotsWrap" class="panel">
-        <div id="slots" class="slots"></div>
-        <div id="slotsMsg" class="msg">Pick a service first.</div>
+        <div class="row">
+          <label class="muted">Date:</label>
+          <input id="bookDate" type="date" />
+          <select id="bookStaff"></select>
+          <button id="btnLoadBookings">Load</button>
+        </div>
+        <div id="bookMsg" class="msg"></div>
       </div>
 
-      <div class="stepTitle">Bookings for selected day</div>
-      <div class="panel">
+      <div class="card" style="grid-column:1/-1;">
+        <div class="pill">Bookings</div>
+        <div class="divider"></div>
         <table>
           <thead>
             <tr>
-              <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th>
+              <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th><th>Action</th>
             </tr>
           </thead>
-          <tbody id="rows"></tbody>
+          <tbody id="bookRows"></tbody>
         </table>
-        <div id="bookingsMsg" class="msg"></div>
       </div>
+    </section>
+  </main>
 
-      <div id="toast" class="msg"></div>
-    </main>
+<script>
+  const API = location.origin;
 
-    <script>
-      const API = location.origin;
+  // ---------- Helpers ----------
+  const $ = (id) => document.getElementById(id);
 
-      let state = {
-        services: [],
-        staff: [],
-        availability: null,
-        selectedServiceId: "",
-        selectedStaffId: "",
-      };
+  function setMsg(id, text, kind="") {
+    const el = $(id);
+    if (!el) return;
+    el.className = "msg " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "");
+    el.textContent = text || "";
+  }
+  function isoToLocalTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  function dollarsToCents(v) {
+    const n = Number(v);
+    if (Number.isNaN(n)) return 0;
+    return Math.round(n * 100);
+  }
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, opts);
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = { error: txt }; }
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+    return data;
+  }
 
-      const el = (id) => document.getElementById(id);
+  // ---------- Tabs ----------
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
 
-      function moneyFromCents(cents){
-        if (typeof cents !== "number") return "";
-        return "$" + (cents/100).toFixed(2);
-      }
+      const key = t.getAttribute("data-tab");
+      document.querySelectorAll("main section").forEach(s => s.style.display = "none");
+      $("tab-" + key).style.display = "grid";
+    });
+  });
 
-      function isoToLocalTime(iso) {
-        const d = new Date(iso);
-        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      }
+  // ---------- Data ----------
+  let staffAll = [];
+  let servicesAll = [];
 
-      function setToast(msg, kind=""){
-        const t = el("toast");
-        t.className = "msg " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "");
-        t.textContent = msg || "";
-      }
+  async function loadStaffList() {
+    // We only have GET /staff (active=true). For admin list, we'll show active only for now.
+    // If you want admin to see inactive too, we’ll add GET /admin/staff later.
+    staffAll = await fetchJSON(API + "/staff");
 
-      async function fetchJSON(url, opts){
-        const res = await fetch(url, opts);
-        const txt = await res.text();
-        let data;
-        try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
-        if (!res.ok) {
-          const message = (data && data.error) ? data.error : ("HTTP " + res.status);
-          throw new Error(message);
-        }
-        return data;
-      }
+    // Staff table
+    const tbody = $("staffRows");
+    tbody.innerHTML = staffAll.map(s => `
+      <tr>
+        <td>${s.name}</td>
+        <td><span class="pill">active</span></td>
+        <td>
+          <button class="secondary" data-disable="${s.id}">Disable</button>
+        </td>
+      </tr>
+    `).join("");
 
-      // -------------------- LOAD BASE DATA --------------------
-
-      async function loadServices(){
-        state.services = await fetchJSON(API + "/services");
-        renderServices();
-      }
-
-      async function loadStaff(){
-        // You already have /staff returning [{id,name}]
-        state.staff = await fetchJSON(API + "/staff");
-        renderStaff(); // will show "choose a service first" until availability is loaded
-      }
-
-      // -------------------- RENDER --------------------
-
-      function renderServices(){
-        const grid = el("servicesGrid");
-        grid.innerHTML = state.services.map(s => {
-          const selected = s.id === state.selectedServiceId ? "selected" : "";
-          return `
-            <div class="card ${selected}" data-service="${s.id}">
-              <div class="cardTop">
-                <div class="cardTitle">${s.name}</div>
-                <div class="pill">${s.duration_minutes} min</div>
-              </div>
-              <div class="price">${moneyFromCents(s.price_cents)}</div>
-            </div>
-          `;
-        }).join("");
-
-        grid.querySelectorAll("[data-service]").forEach(card => {
-          card.addEventListener("click", async () => {
-            state.selectedServiceId = card.getAttribute("data-service");
-            state.selectedStaffId = ""; // reset
-            renderServices();
-            renderStaff();
-            await refreshAvailabilityAndBookings();
+    tbody.querySelectorAll("[data-disable]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-disable");
+        try {
+          await fetchJSON(API + "/admin/staff/" + id, {
+            method: "PUT",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({ active: false })
           });
-        });
-      }
-
-      function renderStaff(){
-        const grid = el("staffGrid");
-
-        if (!state.selectedServiceId){
-          grid.innerHTML = `
-            <div class="panel" style="grid-column:1/-1;">
-              <div class="msg">Choose a service first to see professionals.</div>
-            </div>
-          `;
-          return;
+          setMsg("staffAddMsg", "Staff disabled ✅", "ok");
+          await boot();
+        } catch (e) {
+          setMsg("staffAddMsg", e.message, "err");
         }
+      });
+    });
 
-        // If we have availability, we can show "Available Today" style text
-        const availMap = new Map();
-        if (state.availability && Array.isArray(state.availability.availability)){
-          for (const a of state.availability.availability){
-            availMap.set(a.staff_id, a.slots || []);
-          }
-        }
+    // Hours staff dropdown
+    const hoursSel = $("hoursStaff");
+    hoursSel.innerHTML = <option value="">Select staff…</option> +
+      staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
-        grid.innerHTML = state.staff.map(s => {
-          const selected = s.id === state.selectedStaffId ? "selected" : "";
-          const slots = availMap.get(s.id) || [];
-          const next = slots.length ? isoToLocalTime(slots[0]) : "No slots";
-          const pill = slots.length ? "Available " + next : "Unavailable";
-          return `
-            <div class="card ${selected}" data-staff="${s.id}">
-              <div class="cardTop">
-                <div class="cardTitle">${s.name}</div>
-                <div class="pill">${pill}</div>
-              </div>
-              <div class="sub">Tap to view times</div>
-            </div>
-          `;
-        }).join("");
+    // Bookings staff filter dropdown
+    const bookSel = $("bookStaff");
+    bookSel.innerHTML = <option value="">(All Staff)</option> +
+      staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
+  }
 
-        grid.querySelectorAll("[data-staff]").forEach(card => {
-          card.addEventListener("click", () => {
-            state.selectedStaffId = card.getAttribute("data-staff");
-            renderStaff();
-            renderSlots();
+  async function loadServicesList() {
+    servicesAll = await fetchJSON(API + "/services");
+
+    const tbody = $("svcRows");
+    tbody.innerHTML = servicesAll.map(s => {
+      const price = (s.price_cents || 0) / 100;
+      return `
+        <tr>
+          <td><input data-name="${s.id}" value="${s.name}" /></td>
+          <td><input data-dur="${s.id}" type="number" min="5" step="5" value="${s.duration_minutes}" /></td>
+          <td><input data-price="${s.id}" type="number" min="0" step="0.01" value="${price.toFixed(2)}" /></td>
+          <td><button data-save="${s.id}">Save</button></td>
+        </tr>
+      `;
+    }).join("");
+
+    tbody.querySelectorAll("[data-save]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-save");
+        const name = tbody.querySelector(`[data-name="${id}"]`).value;
+        const duration_minutes = Number(tbody.querySelector(`[data-dur="${id}"]`).value);
+        const price_cents = dollarsToCents(tbody.querySelector(`[data-price="${id}"]`).value);
+
+        try {
+          await fetchJSON(API + "/admin/services/" + id, {
+            method:"PUT",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ name, duration_minutes, price_cents })
           });
-        });
+          setMsg("svcAddMsg", "Service updated ✅", "ok");
+          await boot();
+        } catch (e) {
+          setMsg("svcAddMsg", e.message, "err");
+        }
+      });
+    });
+  }
+
+  // ---------- Staff actions ----------
+  $("btnAddStaff").addEventListener("click", async () => {
+    const name = $("newStaffName").value.trim();
+    if (!name) return setMsg("staffAddMsg", "Enter a name", "err");
+
+    try {
+      await fetchJSON(API + "/admin/staff", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ name })
+      });
+      $("newStaffName").value = "";
+      setMsg("staffAddMsg", "Staff created ✅", "ok");
+      await boot();
+    } catch (e) {
+      setMsg("staffAddMsg", e.message, "err");
+    }
+  });
+
+  // ---------- Service actions ----------
+  $("btnAddService").addEventListener("click", async () => {
+    const name = $("svcName").value.trim();
+    const duration_minutes = Number($("svcDuration").value);
+    const price_cents = dollarsToCents($("svcPrice").value);
+
+    if (!name || !duration_minutes) return setMsg("svcAddMsg", "Missing name or duration", "err");
+
+    try {
+      await fetchJSON(API + "/admin/services", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ name, duration_minutes, price_cents })
+      });
+      $("svcName").value = "";
+      $("svcDuration").value = "";
+      $("svcPrice").value = "";
+      setMsg("svcAddMsg", "Service created ✅", "ok");
+      await boot();
+    } catch (e) {
+      setMsg("svcAddMsg", e.message, "err");
+    }
+  });
+
+  // ---------- Hours ----------
+  const DAYS = [
+    { label:"Sunday",    dow:0 },
+    { label:"Monday",    dow:1 },
+    { label:"Tuesday",   dow:2 },
+    { label:"Wednesday", dow:3 },
+    { label:"Thursday",  dow:4 },
+    { label:"Friday",    dow:5 },
+    { label:"Saturday",  dow:6 },
+  ];
+
+  function renderHoursForm(valuesByDow) {
+    const wrap = $("hoursForm");
+    wrap.innerHTML = DAYS.map(d => {
+      const v = valuesByDow.get(d.dow) || null;
+      return `
+        <div class="dayRow">
+          <label>${d.label}</label>
+          <input type="time" step="60" data-start="${d.dow}" value="${v ? v.start_time.slice(0,5) : ""}" />
+          <input type="time" step="60" data-end="${d.dow}" value="${v ? v.end_time.slice(0,5) : ""}" />
+          <span class="muted">leave blank = off</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  $("btnLoadHours").addEventListener("click", async () => {
+    const staffId = $("hoursStaff").value;
+    if (!staffId) return setMsg("hoursMsg", "Select a staff member", "err");
+
+    try {
+      const rows = await fetchJSON(API + `/admin/staff/${staffId}/availability`);
+      const map = new Map();
+      (rows || []).forEach(r => map.set(r.day_of_week, r));
+      renderHoursForm(map);
+      setMsg("hoursMsg", "Loaded ✅", "ok");
+    } catch (e) {
+      setMsg("hoursMsg", e.message, "err");
+    }
+  });
+
+  $("btnSaveHours").addEventListener("click", async () => {
+    const staffId = $("hoursStaff").value;
+    if (!staffId) return setMsg("hoursMsg", "Select a staff member", "err");
+
+    const payload = [];
+    DAYS.forEach(d => {
+      const start = document.querySelector(`[data-start="${d.dow}"]`).value;
+      const end = document.querySelector(`[data-end="${d.dow}"]`).value;
+      if (start && end) {
+        payload.push({ day_of_week: d.dow, start_time: start + ":00", end_time: end + ":00" });
       }
+    });
 
-      function renderSlots(){
-        const slotsEl = el("slots");
-        const msgEl = el("slotsMsg");
-        slotsEl.innerHTML = "";
+    try {
+      await fetchJSON(API + `/admin/staff/${staffId}/availability`, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      setMsg("hoursMsg", "Saved ✅", "ok");
+    } catch (e) {
+      setMsg("hoursMsg", e.message, "err");
+    }
+  });
 
-        if (!state.selectedServiceId){
-          msgEl.textContent = "Pick a service first.";
-          return;
-        }
+  // ---------- Bookings ----------
+  $("btnLoadBookings").addEventListener("click", async () => {
+    const date = $("bookDate").value;
+    const staff_id = $("bookStaff").value;
+    if (!date) return setMsg("bookMsg", "Pick a date", "err");
 
-        if (!state.availability){
-          msgEl.textContent = "Loading availability...";
-          return;
-        }
+    try {
+      const url = new URL(API + "/bookings");
+      url.searchParams.set("date", date);
+      url.searchParams.set("status", "confirmed");
+      if (staff_id) url.searchParams.set("staff_id", staff_id);
 
-        // Choose staff availability: if staff selected, show only that staff.
-        let staffAvail = state.availability.availability || [];
-        if (state.selectedStaffId){
-          staffAvail = staffAvail.filter(x => x.staff_id === state.selectedStaffId);
-        }
+      const bookings = await fetchJSON(url.toString());
 
-        const combinedSlots = [];
-        for (const a of staffAvail){
-          for (const iso of (a.slots || [])){
-            combinedSlots.push({ staff_id: a.staff_id, staff_name: a.staff_name, start_time: iso });
+      const tbody = $("bookRows");
+      tbody.innerHTML = (bookings || []).map(b => `
+        <tr>
+          <td>${isoToLocalTime(b.start_time)}</td>
+          <td>${isoToLocalTime(b.end_time)}</td>
+          <td>${b.service_name}</td>
+          <td>${b.staff_name}</td>
+          <td>${b.customer_name}</td>
+          <td>${b.customer_phone || ""}</td>
+          <td><button class="danger" data-cancel="${b.id}">Cancel</button></td>
+        </tr>
+      `).join("");
+
+      tbody.querySelectorAll("[data-cancel]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-cancel");
+          if (!confirm("Cancel this booking?")) return;
+
+          try {
+            await fetchJSON(API + "/admin/bookings/" + id, { method:"DELETE" });
+            setMsg("bookMsg", "Cancelled ✅", "ok");
+            $("btnLoadBookings").click();
+          } catch (e) {
+            setMsg("bookMsg", e.message, "err");
           }
-        }
-
-        if (!combinedSlots.length){
-          msgEl.textContent = state.selectedStaffId
-            ? "No available times for this professional."
-            : "Select a professional (or none available).";
-          return;
-        }
-
-        msgEl.textContent = state.selectedStaffId ? "" : "Showing times (choose a professional to narrow down).";
-
-        // show first 40 slots to keep UI clean
-        const show = combinedSlots.slice(0, 40);
-
-        slotsEl.innerHTML = show.map(s => {
-          return `<button class="slotBtn" data-staff="${s.staff_id}" data-start="${s.start_time}">
-            ${isoToLocalTime(s.start_time)}
-          </button>`;
-        }).join("");
-
-        slotsEl.querySelectorAll("[data-start]").forEach(btn => {
-          btn.addEventListener("click", async () => {
-            const staff_id = btn.getAttribute("data-staff");
-            const start_time = btn.getAttribute("data-start");
-
-            // quick prompt for customer name (admin tool)
-            const customer_name = prompt("Customer name?");
-            if (!customer_name) return;
-
-            const customer_phone = prompt("Customer phone (optional)?") || "";
-
-            try{
-              const result = await fetchJSON(API + "/bookings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  service_id: state.selectedServiceId,
-                  staff_id,
-                  customer_name,
-                  customer_phone: customer_phone.trim() ? customer_phone.trim() : undefined,
-                  start_time
-                })
-              });
-              setToast("Booked ✅ " + isoToLocalTime(start_time), "ok");
-              await refreshAvailabilityAndBookings();
-            }catch(e){
-              setToast("Booking failed: " + e.message, "err");
-            }
-          });
         });
-      }
+      });
 
-      function renderBookingsTable(bookings){
-        const tbody = el("rows");
-        tbody.innerHTML = (bookings || []).map(b => `
-          <tr>
-            <td>${isoToLocalTime(b.start_time)}</td>
-            <td>${isoToLocalTime(b.end_time)}</td>
-            <td>${b.service_name}</td>
-            <td>${b.staff_name}</td>
-            <td>${b.customer_name}</td>
-            <td>${b.customer_phone || ""}</td>
-          </tr>
-        `).join("");
+      setMsg("bookMsg", `Loaded ${bookings.length} bookings`, "ok");
+    } catch (e) {
+      setMsg("bookMsg", e.message, "err");
+    }
+  });
 
-        el("bookingsMsg").textContent = bookings?.length ? "" : "No bookings for this day.";
-      }
+  // ---------- Boot ----------
+  async function boot() {
+    setMsg("globalMsg", "");
+    try {
+      await loadStaffList();
+      await loadServicesList();
 
-      // -------------------- REFRESH --------------------
+      // default booking date = today
+      const d = new Date();
+      $("bookDate").value = d.toISOString().slice(0,10);
+    } catch (e) {
+      setMsg("globalMsg", e.message, "err");
+    }
+  }
 
-      async function refreshAvailabilityAndBookings(){
-        const date = el("date").value;
-        if (!date){
-          setToast("Pick a date.", "err");
-          return;
-        }
-
-        // availability needs date + service_id
-        if (state.selectedServiceId){
-          try{
-            state.availability = await fetchJSON(
-              `${API}/availability?service_id=${encodeURIComponent(state.selectedServiceId)}&date=${encodeURIComponent(date)}`
-            );
-          }catch(e){
-            state.availability = null;
-            setToast("Availability error: " + e.message, "err");
-          }
-        } else {
-          state.availability = null;
-        }
-
-        // bookings table for day (optionally filter by staff)
-        try{
-          const url = new URL(API + "/bookings");
-          url.searchParams.set("date", date);
-          if (state.selectedStaffId) url.searchParams.set("staff_id", state.selectedStaffId);
-
-          const bookings = await fetchJSON(url.toString());
-          renderBookingsTable(bookings);
-        }catch(e){
-          renderBookingsTable([]);
-          setToast("Bookings error: " + e.message, "err");
-        }
-
-        renderStaff();
-        renderSlots();
-      }
-
-      // -------------------- INIT --------------------
-
-      async function init(){
-        const d = new Date();
-        el("date").value = d.toISOString().slice(0,10);
-
-        el("refreshBtn").addEventListener("click", refreshAvailabilityAndBookings);
-        el("date").addEventListener("change", refreshAvailabilityAndBookings);
-
-        try{
-          await Promise.all([loadServices(), loadStaff()]);
-          await refreshAvailabilityAndBookings();
-          setToast("");
-        }catch(e){
-          setToast("Init error: " + e.message, "err");
-        }
-      }
-
-      init();
-    </script>
-  </body>
+  boot();
+</script>
+</body>
 </html>
