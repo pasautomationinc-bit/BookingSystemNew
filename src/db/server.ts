@@ -8,7 +8,7 @@ import { createHold } from "../services/booking.service";
 
 type CreateBookingInput = {
   service_id: string;
-  staff_id: string;
+  staff_id?: string;
   customer_name: string;
   customer_phone?: string;
   start_time: string; // ISO string
@@ -19,8 +19,6 @@ app.use(cors());
 app.use(express.json());
 
 /* ---------------- ADMIN PAGE ---------------- */
-// Serve admin.html from the SAME folder as this file (src/db) in dev,
-// and from dist/db in production build.
 app.get("/admin", (_req, res) => {
   const filePath = path.join(process.cwd(), "src", "db", "admin.html");
   res.sendFile(filePath);
@@ -51,6 +49,64 @@ app.get("/services", async (_req, res) => {
   }
 });
 
+/* ---------------- ADMIN SERVICES ---------------- */
+
+app.post("/admin/services", async (req, res) => {
+  const { name, duration_minutes, price_cents } = req.body as {
+    name?: string;
+    duration_minutes?: number;
+    price_cents?: number;
+  };
+
+  if (!name?.trim() || !duration_minutes) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO services (name, duration_minutes, price_cents)
+       VALUES ($1,$2,$3)
+       RETURNING id, name, duration_minutes, price_cents`,
+      [name.trim(), duration_minutes, price_cents ?? 0]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create service" });
+  }
+});
+
+app.put("/admin/services/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, duration_minutes, price_cents } = req.body as {
+    name?: string;
+    duration_minutes?: number;
+    price_cents?: number;
+  };
+
+  try {
+    const result = await query(
+      `UPDATE services
+       SET name = COALESCE($1,name),
+           duration_minutes = COALESCE($2,duration_minutes),
+           price_cents = COALESCE($3,price_cents)
+       WHERE id = $4
+       RETURNING id, name, duration_minutes, price_cents`,
+      [name?.trim() || null, duration_minutes ?? null, price_cents ?? null, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update service" });
+  }
+});
+
 /* ---------------- STAFF ---------------- */
 
 app.get("/staff", async (_req, res) => {
@@ -65,12 +121,127 @@ app.get("/staff", async (_req, res) => {
   }
 });
 
-/* ---------------- AVAILABILITY ---------------- */
+/* ---------------- ADMIN STAFF ---------------- */
 
+app.post("/admin/staff", async (req, res) => {
+  const { name } = req.body as { name?: string };
+
+  if (!name?.trim()) {
+    return res.status(400).json({ error: "Name required" });
+  }
+
+  try {
+    const result = await query(
+      `INSERT INTO staff (name, active)
+       VALUES ($1, true)
+       RETURNING id, name, active`,
+      [name.trim()]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create staff" });
+  }
+});
+
+app.put("/admin/staff/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, active } = req.body as { name?: string; active?: boolean };
+
+  try {
+    const result = await query(
+      `UPDATE staff
+       SET name = COALESCE($1, name),
+           active = COALESCE($2, active)
+       WHERE id = $3
+       RETURNING id, name, active`,
+      [name?.trim() || null, typeof active === "boolean" ? active : null, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Staff not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update staff" });
+  }
+});
+
+/* ---------------- ADMIN STAFF AVAILABILITY ---------------- */
+
+app.get("/admin/staff/:id/availability", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      `SELECT day_of_week, start_time, end_time
+       FROM staff_availability
+       WHERE staff_id = $1
+       ORDER BY day_of_week`,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch availability" });
+  }
+});
+
+app.put("/admin/staff/:id/availability", async (req, res) => {
+  const { id } = req.params;
+  const availability = req.body as Array<{
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }>;
+
+  if (!Array.isArray(availability)) {
+    return res.status(400).json({ error: "Body must be an array" });
+  }
+
+  for (const a of availability) {
+    if (
+      typeof a.day_of_week !== "number" ||
+      !a.start_time ||
+      !a.end_time
+    ) {
+      return res.status(400).json({
+        error: "Each entry must have day_of_week, start_time, end_time",
+      });
+    }
+  }
+
+  try {
+    await query(`DELETE FROM staff_availability WHERE staff_id = $1`, [id]);
+
+    for (const a of availability) {
+      await query(
+        `INSERT INTO staff_availability (staff_id, day_of_week, start_time, end_time)
+         VALUES ($1,$2,$3,$4)`,
+        [id, a.day_of_week, a.start_time, a.end_time]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update availability" });
+  }
+});
+
+/* ---------------- AVAILABILITY ----------------
+   Uses staff_availability per staff per day_of_week.
+   Optional: staff_id filter.
+*/
 app.get("/availability", async (req, res) => {
-  const { service_id, date } = req.query as {
+  const { service_id, date, staff_id } = req.query as {
     service_id?: string;
-    date?: string;
+    date?: string;        // YYYY-MM-DD
+    staff_id?: string;    // optional
   };
 
   if (!service_id || !date) {
@@ -80,7 +251,7 @@ app.get("/availability", async (req, res) => {
   }
 
   try {
-    // 1️⃣ Service duration
+    // 1) Service duration
     const serviceResult = await query<{ duration_minutes: number }>(
       "SELECT duration_minutes FROM services WHERE id = $1",
       [service_id]
@@ -91,16 +262,22 @@ app.get("/availability", async (req, res) => {
     }
 
     const duration = serviceResult.rows[0].duration_minutes;
-
-    // 2️⃣ Business hours
-    const dayStart = new Date(`${date}T09:00:00-05:00`);
-    const dayEnd = new Date(`${date}T17:00:00-05:00`);
     const slotStepMinutes = 15;
 
-    // 3️⃣ Active staff
+    // 2) Staff list (active, optional filter)
     const staffResult = await query<{ id: string; name: string }>(
-      "SELECT id, name FROM staff WHERE active = true"
+      staff_id
+        ? "SELECT id, name FROM staff WHERE active = true AND id = $1"
+        : "SELECT id, name FROM staff WHERE active = true ORDER BY created_at",
+      staff_id ? [staff_id] : []
     );
+
+    // 3) Day-of-week (Postgres: 0=Sun ... 6=Sat)
+    const dowResult = await query<{ dow: number }>(
+      `SELECT EXTRACT(DOW FROM DATE $1) as dow`,
+      [date]
+    );
+    const dow = Number(dowResult.rows[0]?.dow);
 
     const availability: Array<{
       staff_id: string;
@@ -109,7 +286,35 @@ app.get("/availability", async (req, res) => {
     }> = [];
 
     for (const staff of staffResult.rows) {
-      // 4️⃣ Staff bookings
+      // 4) Get this staff's working hours for that day
+      const hoursResult = await query<{ start_time: string; end_time: string }>(
+        `
+        SELECT start_time, end_time
+        FROM staff_availability
+        WHERE staff_id = $1
+          AND day_of_week = $2
+        LIMIT 1
+        `,
+        [staff.id, dow]
+      );
+
+      // If no hours set for that day -> no slots
+      if (hoursResult.rowCount === 0) {
+        availability.push({
+          staff_id: staff.id,
+          staff_name: staff.name,
+          slots: [],
+        });
+        continue;
+      }
+
+      const { start_time, end_time } = hoursResult.rows[0];
+
+      // Build local-ish dayStart/dayEnd with fixed -05:00 offset (your current pattern)
+      const dayStart = new Date(`${date}T${start_time}-05:00`);
+      const dayEnd = new Date(`${date}T${end_time}-05:00`);
+
+      // 5) Existing confirmed bookings inside that window
       const bookingsResult = await query<{
         start_time: Date;
         end_time: Date;
@@ -128,6 +333,7 @@ app.get("/availability", async (req, res) => {
       const bookings = bookingsResult.rows;
       const slots: string[] = [];
 
+      // 6) Generate slots
       for (
         let slotStart = new Date(dayStart);
         slotStart.getTime() + duration * 60_000 <= dayEnd.getTime();
@@ -151,11 +357,7 @@ app.get("/availability", async (req, res) => {
       });
     }
 
-    res.json({
-      date,
-      service_id,
-      availability,
-    });
+    res.json({ date, service_id, availability });
   } catch (err) {
     console.error(err);
     res.status(500).json({
@@ -237,14 +439,9 @@ app.get("/bookings", async (req, res) => {
 /* ---------------- BOOKINGS ---------------- */
 
 app.post("/bookings", async (req, res) => {
-  const { service_id, staff_id, customer_name, customer_phone, start_time } =
-    req.body as {
-      service_id: string;
-      staff_id?: string;
-      customer_name: string;
-      customer_phone?: string;
-      start_time: string;
-    };
+  const body = req.body as CreateBookingInput;
+
+  const { service_id, staff_id, customer_name, customer_phone, start_time } = body;
 
   if (!service_id || !customer_name?.trim() || !start_time) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -310,7 +507,14 @@ app.post("/bookings", async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
       `,
-      [service_id, assignedStaffId, customer_name, customer_phone, start, end]
+      [
+        service_id,
+        assignedStaffId,
+        customer_name.trim(),
+        customer_phone,
+        start,
+        end,
+      ]
     );
 
     return res.status(201).json({
@@ -319,6 +523,7 @@ app.post("/bookings", async (req, res) => {
       status: "confirmed",
     });
   } catch (err: any) {
+    // DB overlap protection (if you have exclusion constraint)
     if (err.code === "23P01") {
       return res.status(409).json({
         error: "Time slot already booked",
@@ -329,6 +534,31 @@ app.post("/bookings", async (req, res) => {
     return res.status(500).json({
       error: "Failed to create booking",
     });
+  }
+});
+
+/* ---------------- CANCEL BOOKING ---------------- */
+
+app.delete("/admin/bookings/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await query(
+      `UPDATE bookings
+       SET status = 'cancelled'
+       WHERE id = $1
+       RETURNING id`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to cancel booking" });
   }
 });
 
