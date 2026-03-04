@@ -1,494 +1,508 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Dashboard</title>
-  <style>
-    :root{
-      --bg:#f6f7fb; --card:#fff; --text:#111827; --muted:#6b7280;
-      --border:#e5e7eb; --shadow:0 10px 24px rgba(0,0,0,.06);
-      --radius:16px; --btn:#111827; --btnText:#fff; --danger:#ef4444; --ok:#065f46;
-    }
-    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background:var(--bg); color:var(--text); }
-    header{ background:#fff; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
-    .wrap{ max-width:1100px; margin:0 auto; padding:14px 16px; }
-    h1{ margin:0; font-size:18px; }
-    .tabs{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
-    .tab{ padding:10px 12px; border:1px solid var(--border); border-radius:999px; background:#fff; cursor:pointer; }
-    .tab.active{ background:var(--btn); color:var(--btnText); border-color:var(--btn); }
-    main{ max-width:1100px; margin:0 auto; padding:16px; }
-    .grid{ display:grid; gap:12px; }
-    @media (min-width: 900px){ .grid.cols2{ grid-template-columns: 1fr 1fr; } }
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    input, select, button, textarea{
-      padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text);
-    }
-    button{ cursor:pointer; background:var(--btn); color:var(--btnText); border-color:var(--btn); }
-    button.secondary{ background:#fff; color:var(--text); border-color:var(--border); }
-    button.danger{ background:var(--danger); border-color:var(--danger); }
-    button:disabled{ opacity:.55; cursor:not-allowed; }
-    .muted{ color:var(--muted); font-size:13px; }
-    .msg{ margin-top:10px; font-size:13px; }
-    .msg.ok{ color:var(--ok); }
-    .msg.err{ color:var(--danger); white-space:pre-wrap; }
-    table{ border-collapse:collapse; width:100%; margin-top:10px; overflow:hidden; border-radius:12px; }
-    th, td{ border-bottom:1px solid var(--border); padding:10px; font-size:14px; }
-    th{ background:#fafafa; text-align:left; color:#374151; }
-    .pill{ display:inline-block; padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted); background:#fff; }
-    .divider{ height:1px; background:var(--border); margin:12px 0; }
-    .days{ display:grid; gap:10px; grid-template-columns: 1fr; }
-    @media(min-width:720px){ .days{ grid-template-columns: 1fr 1fr; } }
-    .dayRow{ display:flex; gap:10px; align-items:center; }
-    .dayRow label{ width:90px; font-weight:700; color:#374151; }
-  </style>
-</head>
-<body>
-  <header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Booking Admin</title>
+    <style>
+      :root{
+        --bg:#0b1020;
+        --card:#121a33;
+        --muted:#8fa0c6;
+        --text:#eaf0ff;
+        --line:#22305a;
+        --accent:#6ea8fe;
+        --danger:#ff5c7a;
+        --ok:#38d9a9;
+      }
+      body{ margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:linear-gradient(180deg,#070b16, #0b1020); color:var(--text); }
+      a{ color:var(--accent); }
+      .wrap{ max-width:1100px; margin:0 auto; padding:18px; }
+      .topbar{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+      .title{ font-size:20px; font-weight:700; }
+      .pill{ font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:6px 10px; }
+      .grid{ display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px; }
+      @media(min-width:980px){ .grid{ grid-template-columns: 1.15fr .85fr; } }
+      .card{ background:rgba(18,26,51,.9); border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+      .card h3{ margin:0 0 10px 0; font-size:14px; letter-spacing:.3px; color:#cfe0ff; }
+      .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+      input, select, button{
+        background:#0c1330; color:var(--text); border:1px solid var(--line);
+        padding:10px 10px; border-radius:10px; outline:none;
+      }
+      input::placeholder{ color:#5f70a3; }
+      button{ cursor:pointer; background:rgba(110,168,254,.15); border-color:rgba(110,168,254,.35); }
+      button:hover{ background:rgba(110,168,254,.22); }
+      .btn-danger{ background:rgba(255,92,122,.14); border-color:rgba(255,92,122,.35); }
+      .btn-danger:hover{ background:rgba(255,92,122,.22); }
+      .btn-ok{ background:rgba(56,217,169,.12); border-color:rgba(56,217,169,.35); }
+      .btn-ok:hover{ background:rgba(56,217,169,.2); }
+      .muted{ color:var(--muted); font-size:12px; }
+      .msg{ margin-top:8px; font-size:12px; }
+      .msg.err{ color:var(--danger); }
+      .msg.ok{ color:var(--ok); }
+
+      table{ width:100%; border-collapse:collapse; margin-top:10px; }
+      th, td{ border-bottom:1px solid var(--line); padding:10px 6px; font-size:13px; text-align:left; }
+      th{ color:#cfe0ff; font-weight:600; }
+      .tag{ font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+
+      .calendar{ margin-top:12px; display:grid; grid-template-columns: 92px 1fr; gap:8px; }
+      .slot{ border:1px solid var(--line); background:#0c1330; border-radius:10px; padding:8px; min-height:26px; display:flex; align-items:center; }
+      .booked{ background:rgba(255,92,122,.12); border-color:rgba(255,92,122,.35); }
+      .timecell{ color:var(--muted); font-size:12px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; }
+
+      .two{ display:grid; grid-template-columns:1fr; gap:12px; }
+      @media(min-width:700px){ .two{ grid-template-columns: 1fr 1fr; } }
+
+      .hr-grid{ display:grid; grid-template-columns: 130px 1fr 1fr; gap:8px; align-items:center; margin-top:10px; }
+      .hr-grid .head{ color:#cfe0ff; font-size:12px; font-weight:600; }
+      .hr-row{ display:contents; }
+    </style>
+  </head>
+  <body>
     <div class="wrap">
-      <h1>Admin Dashboard</h1>
-      <div class="tabs">
-        <div class="tab active" data-tab="staff">Staff</div>
-        <div class="tab" data-tab="services">Services</div>
-        <div class="tab" data-tab="hours">Working Hours</div>
-        <div class="tab" data-tab="bookings">Bookings</div>
+      <div class="topbar">
+        <div class="title">Admin Dashboard</div>
+        <div class="pill">Local • <span id="apiBase"></span></div>
       </div>
-      <div id="globalMsg" class="msg"></div>
+
+      <div class="grid">
+        <!-- LEFT: Bookings + Calendar -->
+        <div class="card">
+          <h3>Bookings & Day Calendar</h3>
+          <div class="row">
+            <label class="muted">Date</label>
+            <input id="date" type="date" />
+            <label class="muted">Staff</label>
+            <select id="bookStaff"></select>
+            <button class="btn-ok" id="refreshBtn">Refresh</button>
+            <span class="muted">Status defaults to <span class="tag">confirmed</span></span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="bookRows"></tbody>
+          </table>
+
+          <h3 style="margin-top:14px;">Day Calendar</h3>
+          <div id="cal" class="calendar"></div>
+        </div>
+
+        <!-- RIGHT: Admin controls -->
+        <div class="card">
+          <h3>Manage Staff & Services</h3>
+
+          <div class="two">
+            <!-- Staff -->
+            <div class="card" style="padding:12px;">
+              <h3>Staff</h3>
+              <div class="row">
+                <input id="newStaffName" placeholder="New staff name" />
+                <button class="btn-ok" id="addStaffBtn">Add</button>
+              </div>
+              <div id="staffAddMsg" class="msg"></div>
+
+              <table>
+                <thead>
+                  <tr><th>Name</th><th>Active</th><th></th></tr>
+                </thead>
+                <tbody id="staffRows"></tbody>
+              </table>
+            </div>
+
+            <!-- Services -->
+            <div class="card" style="padding:12px;">
+              <h3>Services</h3>
+              <div class="row">
+                <input id="newSvcName" placeholder="Service name" />
+                <input id="newSvcDur" type="number" min="1" placeholder="Minutes" style="width:110px;" />
+                <input id="newSvcPrice" type="number" min="0" placeholder="Price $" style="width:110px;" />
+                <button class="btn-ok" id="addSvcBtn">Add</button>
+              </div>
+              <div id="svcAddMsg" class="msg"></div>
+
+              <table>
+                <thead>
+                  <tr><th>Name</th><th>Min</th><th>Price</th><th></th></tr>
+                </thead>
+                <tbody id="svcRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Working hours -->
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <h3>Working Hours</h3>
+            <div class="row">
+              <label class="muted">Staff</label>
+              <select id="hoursStaff"></select>
+              <button id="loadHoursBtn">Load</button>
+              <button class="btn-ok" id="saveHoursBtn">Save</button>
+              <span class="muted">Tip: set blank to remove hours</span>
+            </div>
+
+            <div class="hr-grid" style="margin-top:10px;">
+              <div class="head">Day</div>
+              <div class="head">Start</div>
+              <div class="head">End</div>
+
+              <div class="hr-row">
+                <div class="muted">Sun</div><input id="d0s" type="time"><input id="d0e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Mon</div><input id="d1s" type="time"><input id="d1e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Tue</div><input id="d2s" type="time"><input id="d2e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Wed</div><input id="d3s" type="time"><input id="d3e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Thu</div><input id="d4s" type="time"><input id="d4e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Fri</div><input id="d5s" type="time"><input id="d5e" type="time">
+              </div>
+              <div class="hr-row">
+                <div class="muted">Sat</div><input id="d6s" type="time"><input id="d6e" type="time">
+              </div>
+            </div>
+
+            <div id="hoursMsg" class="msg"></div>
+          </div>
+
+          <div class="muted" style="margin-top:10px;">
+            Endpoints used: <span class="tag">/staff</span> <span class="tag">/services</span> <span class="tag">/bookings</span>
+            <span class="tag">/admin/staff</span> <span class="tag">/admin/services</span>
+            <span class="tag">/admin/staff/:id/availability</span> <span class="tag">/admin/bookings/:id</span>
+          </div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <main>
-    <!-- STAFF -->
-    <section id="tab-staff" class="grid cols2">
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <div class="pill">Add Staff</div>
-            <div class="muted" style="margin-top:6px;">Create new staff (shows immediately in booking flow).</div>
-          </div>
-        </div>
-        <div class="divider"></div>
-        <div class="row">
-          <input id="newStaffName" placeholder="Staff name (e.g., Mike)" />
-          <button id="btnAddStaff">Add</button>
-        </div>
-        <div id="staffAddMsg" class="msg"></div>
-      </div>
+    <script>
+      const API = location.origin;
+      document.getElementById("apiBase").textContent = API;
 
-      <div class="card">
-        <div class="pill">Staff List</div>
-        <div class="muted" style="margin-top:6px;">Enable/Disable staff (soft delete).</div>
-        <div class="divider"></div>
-        <table>
-          <thead><tr><th>Name</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="staffRows"></tbody>
-        </table>
-      </div>
-    </section>
+      const $ = (id) => document.getElementById(id);
 
-    <!-- SERVICES -->
-    <section id="tab-services" class="grid cols2" style="display:none;">
-      <div class="card">
-        <div class="pill">Add Service</div>
-        <div class="muted" style="margin-top:6px;">Services drive duration & pricing.</div>
-        <div class="divider"></div>
+      function setMsg(id, text, type){
+        const el = $(id);
+        el.className = "msg " + (type || "");
+        el.textContent = text || "";
+      }
 
-        <div class="row">
-          <input id="svcName" placeholder="Service name (e.g., Haircut)" />
-          <input id="svcDuration" type="number" min="5" step="5" placeholder="Duration (min)" />
-          <input id="svcPrice" type="number" min="0" step="0.01" placeholder="Price ($)" />
-          <button id="btnAddService">Add</button>
-        </div>
-        <div id="svcAddMsg" class="msg"></div>
-      </div>
+      async function fetchJSON(url, opts){
+        const res = await fetch(url, opts);
+        const txt = await res.text();
+        let data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
+        if (!res.ok) {
+          const msg = (data && data.error) ? data.error : ("HTTP " + res.status);
+          throw new Error(msg);
+        }
+        return data;
+      }
 
-      <div class="card">
-        <div class="pill">Service List (Edit)</div>
-        <div class="muted" style="margin-top:6px;">Edit name/duration/price and save.</div>
-        <div class="divider"></div>
+      function isoToLocalTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
 
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Duration</th><th>Price</th><th>Save</th></tr>
-          </thead>
-          <tbody id="svcRows"></tbody>
-        </table>
-      </div>
-    </section>
+      // ---------------- Staff + Services cache
+      let staffAll = [];
+      let servicesAll = [];
 
-    <!-- HOURS -->
-    <section id="tab-hours" class="grid cols2" style="display:none;">
-      <div class="card">
-        <div class="pill">Select Staff</div>
-        <div class="muted" style="margin-top:6px;">Set weekly working hours per staff.</div>
-        <div class="divider"></div>
+      async function loadStaffAll(){
+        staffAll = await fetchJSON(API + "/staff");
+        // hours staff dropdown
+        const hoursSel = $("hoursStaff");
+        hoursSel.innerHTML =
+          <option value="">Select staff...</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
-        <div class="row">
-          <select id="hoursStaff"></select>
-          <button class="secondary" id="btnLoadHours">Load</button>
-        </div>
+        // bookings staff filter dropdown
+        const bookSel = $("bookStaff");
+        bookSel.innerHTML =
+          <option value="">(All Staff)</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
-        <div class="divider"></div>
+        // staff table (for deactivate)
+        const tbody = $("staffRows");
+        tbody.innerHTML = staffAll.map(s => `
+          <tr>
+            <td>${s.name}</td>
+            <td><span class="tag">active</span></td>
+            <td style="text-align:right;">
+              <button class="btn-danger" data-disable="${s.id}">Deactivate</button>
+            </td>
+          </tr>
+        `).join("");
 
-        <div class="days" id="hoursForm"></div>
-
-        <div class="row" style="margin-top:12px;">
-          <button id="btnSaveHours">Save Hours</button>
-        </div>
-        <div id="hoursMsg" class="msg"></div>
-      </div>
-
-      <div class="card">
-        <div class="pill">How it works</div>
-        <div class="muted" style="margin-top:6px;">
-          Availability uses <b>staff_availability</b> for the selected day-of-week.
-          If a staff member has no hours for that day, they show no available times.
-        </div>
-        <div class="divider"></div>
-        <div class="muted">
-          Day of week (Postgres):
-          <div style="margin-top:8px;">
-            <b>0</b>=Sun, <b>1</b>=Mon, <b>2</b>=Tue, <b>3</b>=Wed, <b>4</b>=Thu, <b>5</b>=Fri, <b>6</b>=Sat
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- BOOKINGS -->
-    <section id="tab-bookings" class="grid cols2" style="display:none;">
-      <div class="card">
-        <div class="pill">Filter</div>
-        <div class="muted" style="margin-top:6px;">View confirmed bookings by date and cancel if needed.</div>
-        <div class="divider"></div>
-
-        <div class="row">
-          <label class="muted">Date:</label>
-          <input id="bookDate" type="date" />
-          <select id="bookStaff"></select>
-          <button id="btnLoadBookings">Load</button>
-        </div>
-        <div id="bookMsg" class="msg"></div>
-      </div>
-
-      <div class="card" style="grid-column:1/-1;">
-        <div class="pill">Bookings</div>
-        <div class="divider"></div>
-        <table>
-          <thead>
-            <tr>
-              <th>Start</th><th>End</th><th>Service</th><th>Staff</th><th>Customer</th><th>Phone</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="bookRows"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-<script>
-  const API = location.origin;
-
-  // ---------- Helpers ----------
-  const $ = (id) => document.getElementById(id);
-
-  function setMsg(id, text, kind="") {
-    const el = $(id);
-    if (!el) return;
-    el.className = "msg " + (kind === "ok" ? "ok" : kind === "err" ? "err" : "");
-    el.textContent = text || "";
-  }
-  function isoToLocalTime(iso) {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  function dollarsToCents(v) {
-    const n = Number(v);
-    if (Number.isNaN(n)) return 0;
-    return Math.round(n * 100);
-  }
-  async function fetchJSON(url, opts) {
-    const res = await fetch(url, opts);
-    const txt = await res.text();
-    let data = null;
-    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = { error: txt }; }
-    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-    return data;
-  }
-
-  // ---------- Tabs ----------
-  document.querySelectorAll(".tab").forEach(t => {
-    t.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-      t.classList.add("active");
-
-      const key = t.getAttribute("data-tab");
-      document.querySelectorAll("main section").forEach(s => s.style.display = "none");
-      $("tab-" + key).style.display = "grid";
-    });
-  });
-
-  // ---------- Data ----------
-  let staffAll = [];
-  let servicesAll = [];
-
-  async function loadStaffList() {
-    // We only have GET /staff (active=true). For admin list, we'll show active only for now.
-    // If you want admin to see inactive too, we’ll add GET /admin/staff later.
-    staffAll = await fetchJSON(API + "/staff");
-
-    // Staff table
-    const tbody = $("staffRows");
-    tbody.innerHTML = staffAll.map(s => `
-      <tr>
-        <td>${s.name}</td>
-        <td><span class="pill">active</span></td>
-        <td>
-          <button class="secondary" data-disable="${s.id}">Disable</button>
-        </td>
-      </tr>
-    `).join("");
-
-    tbody.querySelectorAll("[data-disable]").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-disable");
-        try {
-          await fetchJSON(API + "/admin/staff/" + id, {
-            method: "PUT",
-            headers: { "Content-Type":"application/json" },
-            body: JSON.stringify({ active: false })
+        // deactivate click handlers
+        tbody.querySelectorAll("[data-disable]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-disable");
+            try{
+              await fetchJSON(API + "/admin/staff/" + id, {
+                method:"PUT",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify({ active:false })
+              });
+              setMsg("staffAddMsg", "Staff deactivated", "ok");
+              await boot();
+            }catch(e){
+              setMsg("staffAddMsg", e.message, "err");
+            }
           });
-          setMsg("staffAddMsg", "Staff disabled ✅", "ok");
+        });
+      }
+
+      async function loadServicesAll(){
+        servicesAll = await fetchJSON(API + "/services");
+        const tbody = $("svcRows");
+        tbody.innerHTML = servicesAll.map(s => {
+          const price = (s.price_cents || 0) / 100;
+          return `
+            <tr>
+              <td><input data-svc-name="${s.id}" value="${s.name}" /></td>
+              <td><input data-svc-dur="${s.id}" type="number" min="1" value="${s.duration_minutes}" style="width:90px;"></td>
+              <td><input data-svc-price="${s.id}" type="number" min="0" step="0.01" value="${price.toFixed(2)}" style="width:100px;"></td>
+              <td style="text-align:right;">
+                <button class="btn-ok" data-svc-save="${s.id}">Save</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        tbody.querySelectorAll("[data-svc-save]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-svc-save");
+            const name = document.querySelector(`[data-svc-name="${id}"]`).value.trim();
+            const duration_minutes = Number(document.querySelector(`[data-svc-dur="${id}"]`).value);
+            const price = Number(document.querySelector(`[data-svc-price="${id}"]`).value || 0);
+            const price_cents = Math.round(price * 100);
+
+            try{
+              await fetchJSON(API + "/admin/services/" + id, {
+                method:"PUT",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify({ name, duration_minutes, price_cents })
+              });
+              setMsg("svcAddMsg", "Service updated", "ok");
+              await loadServicesAll();
+            }catch(e){
+              setMsg("svcAddMsg", e.message, "err");
+            }
+          });
+        });
+      }
+
+      // ---------------- Bookings
+      async function loadBookings(){
+        const date = $("date").value;
+        const staff_id = $("bookStaff").value;
+
+        const url = new URL(API + "/bookings");
+        url.searchParams.set("date", date);
+        if (staff_id) url.searchParams.set("staff_id", staff_id);
+
+        const bookings = await fetchJSON(url);
+
+        const tbody = $("bookRows");
+        tbody.innerHTML = bookings.map(b => `
+          <tr>
+            <td>${isoToLocalTime(b.start_time)}</td>
+            <td>${isoToLocalTime(b.end_time)}</td>
+            <td>${b.service_name}</td>
+            <td>${b.staff_name}</td>
+            <td>${b.customer_name}</td>
+            <td>${b.customer_phone || ""}</td>
+            <td style="text-align:right;">
+              <button class="btn-danger" data-cancel="${b.id}">Cancel</button>
+            </td>
+          </tr>
+        `).join("");
+
+        tbody.querySelectorAll("[data-cancel]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-cancel");
+            try{
+              await fetchJSON(API + "/admin/bookings/" + id, { method:"DELETE" });
+              await refreshBookingsAndCal();
+            }catch(e){
+              alert(e.message);
+            }
+          });
+        });
+
+        return bookings;
+      }
+
+      function buildCalendar(bookings){
+        const cal = $("cal");
+        cal.innerHTML = "";
+
+        const date = $("date").value;
+        if (!date) return;
+
+        // Same window as your availability route (09:00-17:00 local)
+        const start = new Date(date + "T09:00:00");
+        const end = new Date(date + "T17:00:00");
+
+        for (let t = new Date(start); t < end; t = new Date(t.getTime() + 15*60000)) {
+          const label = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          const slotStart = t;
+          const slotEnd = new Date(t.getTime() + 15*60000);
+
+          const hit = bookings.find(b => {
+            const bs = new Date(b.start_time);
+            const be = new Date(b.end_time);
+            return bs < slotEnd && be > slotStart;
+          });
+
+          const timeCell = document.createElement("div");
+          timeCell.className = "timecell";
+          timeCell.textContent = label;
+
+          const slotCell = document.createElement("div");
+          slotCell.className = "slot" + (hit ? " booked" : "");
+          slotCell.textContent = hit ? `${hit.service_name} • ${hit.customer_name} (${hit.staff_name})` : "";
+
+          cal.appendChild(timeCell);
+          cal.appendChild(slotCell);
+        }
+      }
+
+      async function refreshBookingsAndCal(){
+        const bookings = await loadBookings();
+        buildCalendar(bookings);
+      }
+
+      // ---------------- Add Staff / Add Service
+      async function addStaff(){
+        const name = $("newStaffName").value.trim();
+        if (!name) return setMsg("staffAddMsg","Name required","err");
+
+        try{
+          await fetchJSON(API + "/admin/staff", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ name })
+          });
+          $("newStaffName").value = "";
+          setMsg("staffAddMsg","Staff added","ok");
           await boot();
-        } catch (e) {
+        }catch(e){
           setMsg("staffAddMsg", e.message, "err");
         }
-      });
-    });
+      }
 
-    // Hours staff dropdown
-    const hoursSel = $("hoursStaff");
-    hoursSel.innerHTML = <option value="">Select staff…</option> +
-      staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
+      async function addService(){
+        const name = $("newSvcName").value.trim();
+        const duration_minutes = Number($("newSvcDur").value);
+        const price = Number($("newSvcPrice").value || 0);
+        const price_cents = Math.round(price * 100);
 
-    // Bookings staff filter dropdown
-    const bookSel = $("bookStaff");
-    bookSel.innerHTML = <option value="">(All Staff)</option> +
-      staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
-  }
+        if (!name || !duration_minutes) return setMsg("svcAddMsg","Name + minutes required","err");
 
-  async function loadServicesList() {
-    servicesAll = await fetchJSON(API + "/services");
-
-    const tbody = $("svcRows");
-    tbody.innerHTML = servicesAll.map(s => {
-      const price = (s.price_cents || 0) / 100;
-      return `
-        <tr>
-          <td><input data-name="${s.id}" value="${s.name}" /></td>
-          <td><input data-dur="${s.id}" type="number" min="5" step="5" value="${s.duration_minutes}" /></td>
-          <td><input data-price="${s.id}" type="number" min="0" step="0.01" value="${price.toFixed(2)}" /></td>
-          <td><button data-save="${s.id}">Save</button></td>
-        </tr>
-      `;
-    }).join("");
-
-    tbody.querySelectorAll("[data-save]").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-save");
-        const name = tbody.querySelector(`[data-name="${id}"]`).value;
-        const duration_minutes = Number(tbody.querySelector(`[data-dur="${id}"]`).value);
-        const price_cents = dollarsToCents(tbody.querySelector(`[data-price="${id}"]`).value);
-
-        try {
-          await fetchJSON(API + "/admin/services/" + id, {
-            method:"PUT",
+        try{
+          await fetchJSON(API + "/admin/services", {
+            method:"POST",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ name, duration_minutes, price_cents })
           });
-          setMsg("svcAddMsg", "Service updated ✅", "ok");
-          await boot();
-        } catch (e) {
+          $("newSvcName").value = "";
+          $("newSvcDur").value = "";
+          $("newSvcPrice").value = "";
+          setMsg("svcAddMsg","Service added","ok");
+          await loadServicesAll();
+        }catch(e){
           setMsg("svcAddMsg", e.message, "err");
         }
-      });
-    });
-  }
-
-  // ---------- Staff actions ----------
-  $("btnAddStaff").addEventListener("click", async () => {
-    const name = $("newStaffName").value.trim();
-    if (!name) return setMsg("staffAddMsg", "Enter a name", "err");
-
-    try {
-      await fetchJSON(API + "/admin/staff", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ name })
-      });
-      $("newStaffName").value = "";
-      setMsg("staffAddMsg", "Staff created ✅", "ok");
-      await boot();
-    } catch (e) {
-      setMsg("staffAddMsg", e.message, "err");
-    }
-  });
-
-  // ---------- Service actions ----------
-  $("btnAddService").addEventListener("click", async () => {
-    const name = $("svcName").value.trim();
-    const duration_minutes = Number($("svcDuration").value);
-    const price_cents = dollarsToCents($("svcPrice").value);
-
-    if (!name || !duration_minutes) return setMsg("svcAddMsg", "Missing name or duration", "err");
-
-    try {
-      await fetchJSON(API + "/admin/services", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ name, duration_minutes, price_cents })
-      });
-      $("svcName").value = "";
-      $("svcDuration").value = "";
-      $("svcPrice").value = "";
-      setMsg("svcAddMsg", "Service created ✅", "ok");
-      await boot();
-    } catch (e) {
-      setMsg("svcAddMsg", e.message, "err");
-    }
-  });
-
-  // ---------- Hours ----------
-  const DAYS = [
-    { label:"Sunday",    dow:0 },
-    { label:"Monday",    dow:1 },
-    { label:"Tuesday",   dow:2 },
-    { label:"Wednesday", dow:3 },
-    { label:"Thursday",  dow:4 },
-    { label:"Friday",    dow:5 },
-    { label:"Saturday",  dow:6 },
-  ];
-
-  function renderHoursForm(valuesByDow) {
-    const wrap = $("hoursForm");
-    wrap.innerHTML = DAYS.map(d => {
-      const v = valuesByDow.get(d.dow) || null;
-      return `
-        <div class="dayRow">
-          <label>${d.label}</label>
-          <input type="time" step="60" data-start="${d.dow}" value="${v ? v.start_time.slice(0,5) : ""}" />
-          <input type="time" step="60" data-end="${d.dow}" value="${v ? v.end_time.slice(0,5) : ""}" />
-          <span class="muted">leave blank = off</span>
-        </div>
-      `;
-    }).join("");
-  }
-
-  $("btnLoadHours").addEventListener("click", async () => {
-    const staffId = $("hoursStaff").value;
-    if (!staffId) return setMsg("hoursMsg", "Select a staff member", "err");
-
-    try {
-      const rows = await fetchJSON(API + `/admin/staff/${staffId}/availability`);
-      const map = new Map();
-      (rows || []).forEach(r => map.set(r.day_of_week, r));
-      renderHoursForm(map);
-      setMsg("hoursMsg", "Loaded ✅", "ok");
-    } catch (e) {
-      setMsg("hoursMsg", e.message, "err");
-    }
-  });
-
-  $("btnSaveHours").addEventListener("click", async () => {
-    const staffId = $("hoursStaff").value;
-    if (!staffId) return setMsg("hoursMsg", "Select a staff member", "err");
-
-    const payload = [];
-    DAYS.forEach(d => {
-      const start = document.querySelector(`[data-start="${d.dow}"]`).value;
-      const end = document.querySelector(`[data-end="${d.dow}"]`).value;
-      if (start && end) {
-        payload.push({ day_of_week: d.dow, start_time: start + ":00", end_time: end + ":00" });
       }
-    });
 
-    try {
-      await fetchJSON(API + `/admin/staff/${staffId}/availability`, {
-        method:"PUT",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
-      });
-      setMsg("hoursMsg", "Saved ✅", "ok");
-    } catch (e) {
-      setMsg("hoursMsg", e.message, "err");
-    }
-  });
+      // ---------------- Hours (staff_availability)
+      function clearHoursInputs(){
+        for (let d=0; d<=6; d++){
+          $("d"+d+"s").value = "";
+          $("d"+d+"e").value = "";
+        }
+      }
 
-  // ---------- Bookings ----------
-  $("btnLoadBookings").addEventListener("click", async () => {
-    const date = $("bookDate").value;
-    const staff_id = $("bookStaff").value;
-    if (!date) return setMsg("bookMsg", "Pick a date", "err");
+      async function loadHours(){
+        const staffId = $("hoursStaff").value;
+        if (!staffId) return setMsg("hoursMsg","Select staff first","err");
 
-    try {
-      const url = new URL(API + "/bookings");
-      url.searchParams.set("date", date);
-      url.searchParams.set("status", "confirmed");
-      if (staff_id) url.searchParams.set("staff_id", staff_id);
+        clearHoursInputs();
+        setMsg("hoursMsg","Loading...","");
 
-      const bookings = await fetchJSON(url.toString());
-
-      const tbody = $("bookRows");
-      tbody.innerHTML = (bookings || []).map(b => `
-        <tr>
-          <td>${isoToLocalTime(b.start_time)}</td>
-          <td>${isoToLocalTime(b.end_time)}</td>
-          <td>${b.service_name}</td>
-          <td>${b.staff_name}</td>
-          <td>${b.customer_name}</td>
-          <td>${b.customer_phone || ""}</td>
-          <td><button class="danger" data-cancel="${b.id}">Cancel</button></td>
-        </tr>
-      `).join("");
-
-      tbody.querySelectorAll("[data-cancel]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-cancel");
-          if (!confirm("Cancel this booking?")) return;
-
-          try {
-            await fetchJSON(API + "/admin/bookings/" + id, { method:"DELETE" });
-            setMsg("bookMsg", "Cancelled ✅", "ok");
-            $("btnLoadBookings").click();
-          } catch (e) {
-            setMsg("bookMsg", e.message, "err");
+        try{
+          const rows = await fetchJSON(API + "/admin/staff/" + staffId + "/availability");
+          // rows: [{day_of_week, start_time, end_time}]
+          for (const r of rows){
+            const d = Number(r.day_of_week);
+            $("d"+d+"s").value = (r.start_time || "").slice(0,5);
+            $("d"+d+"e").value = (r.end_time || "").slice(0,5);
           }
-        });
-      });
+          setMsg("hoursMsg","Loaded","ok");
+        }catch(e){
+          setMsg("hoursMsg", e.message, "err");
+        }
+      }
 
-      setMsg("bookMsg", `Loaded ${bookings.length} bookings`, "ok");
-    } catch (e) {
-      setMsg("bookMsg", e.message, "err");
-    }
-  });
+      async function saveHours(){
+        const staffId = $("hoursStaff").value;
+        if (!staffId) return setMsg("hoursMsg","Select staff first","err");
 
-  // ---------- Boot ----------
-  async function boot() {
-    setMsg("globalMsg", "");
-    try {
-      await loadStaffList();
-      await loadServicesList();
+        const payload = [];
+        for (let d=0; d<=6; d++){
+          const start_time = $("d"+d+"s").value;
+          const end_time = $("d"+d+"e").value;
+          // only save rows that have both start/end
+          if (start_time && end_time){
+            payload.push({ day_of_week:d, start_time, end_time });
+          }
+        }
 
-      // default booking date = today
-      const d = new Date();
-      $("bookDate").value = d.toISOString().slice(0,10);
-    } catch (e) {
-      setMsg("globalMsg", e.message, "err");
-    }
-  }
+        try{
+          await fetchJSON(API + "/admin/staff/" + staffId + "/availability", {
+            method:"PUT",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          });
+          setMsg("hoursMsg","Saved working hours","ok");
+        }catch(e){
+          setMsg("hoursMsg", e.message, "err");
+        }
+      }
 
-  boot();
-</script>
-</body>
+      // ---------------- Boot
+      async function boot(){
+        await loadStaffAll();
+        await loadServicesAll();
+        await refreshBookingsAndCal();
+      }
+
+      // init
+      (function init(){
+        const d = new Date();
+        $("date").value = d.toISOString().slice(0,10);
+
+        $("refreshBtn").addEventListener("click", refreshBookingsAndCal);
+        $("addStaffBtn").addEventListener("click", addStaff);
+        $("addSvcBtn").addEventListener("click", addService);
+        $("loadHoursBtn").addEventListener("click", loadHours);
+        $("saveHoursBtn").addEventListener("click", saveHours);
+
+        boot();
+      })();
+    </script>
+  </body>
 </html>
