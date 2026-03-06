@@ -324,6 +324,9 @@ app.post("/bookings", async (req, res) => {
     if (!service_id || !customer_name?.trim() || !start_time) {
         return res.status(400).json({ error: "Missing required fields" });
     }
+    if (customer_phone && !/^[0-9+\-\s()]{7,20}$/.test(customer_phone.trim())) {
+        return res.status(400).json({ error: "Invalid phone number" });
+    }
     try {
         const serviceResult = await (0, _1.query)("SELECT duration_minutes FROM services WHERE id = $1", [service_id]);
         if (serviceResult.rowCount === 0) {
@@ -372,7 +375,7 @@ app.post("/bookings", async (req, res) => {
             service_id,
             assignedStaffId,
             customer_name.trim(),
-            customer_phone,
+            customer_phone?.trim() || null,
             start,
             end,
         ]);
