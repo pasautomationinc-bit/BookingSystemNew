@@ -12,9 +12,25 @@ const booking_service_1 = require("../services/booking.service");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+const ADMIN_KEY = process.env.ADMIN_KEY;
+function adminAuth(req, res, next) {
+    if (!ADMIN_KEY) {
+        return res.status(500).json({ error: "ADMIN_KEY is not configured" });
+    }
+    const incoming = req.headers["x-admin-key"];
+    if (incoming !== ADMIN_KEY) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    next();
+}
 /* ---------------- ADMIN PAGE ---------------- */
 app.get("/admin", (_req, res) => {
     const filePath = path_1.default.join(process.cwd(), "src", "db", "admin.html");
+    res.sendFile(filePath);
+});
+/* ---------------- BOOK PAGE ---------------- */
+app.get("/book", (_req, res) => {
+    const filePath = path_1.default.join(process.cwd(), "src", "db", "book.html");
     res.sendFile(filePath);
 });
 /* ---------------- HEALTH ---------------- */
@@ -39,7 +55,7 @@ app.get("/services", async (_req, res) => {
     }
 });
 /* ---------------- ADMIN SERVICES ---------------- */
-app.post("/admin/services", async (req, res) => {
+app.post("/admin/services", adminAuth, async (req, res) => {
     const { name, duration_minutes, price_cents } = req.body;
     if (!name?.trim() || !duration_minutes) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -55,7 +71,7 @@ app.post("/admin/services", async (req, res) => {
         res.status(500).json({ error: "Failed to create service" });
     }
 });
-app.put("/admin/services/:id", async (req, res) => {
+app.put("/admin/services/:id", adminAuth, async (req, res) => {
     const { id } = req.params;
     const { name, duration_minutes, price_cents } = req.body;
     try {
@@ -87,7 +103,7 @@ app.get("/staff", async (_req, res) => {
     }
 });
 /* ---------------- ADMIN STAFF ---------------- */
-app.post("/admin/staff", async (req, res) => {
+app.post("/admin/staff", adminAuth, async (req, res) => {
     const { name } = req.body;
     if (!name?.trim()) {
         return res.status(400).json({ error: "Name required" });
@@ -103,7 +119,7 @@ app.post("/admin/staff", async (req, res) => {
         res.status(500).json({ error: "Failed to create staff" });
     }
 });
-app.put("/admin/staff/:id", async (req, res) => {
+app.put("/admin/staff/:id", adminAuth, async (req, res) => {
     const { id } = req.params;
     const { name, active } = req.body;
     try {
@@ -123,7 +139,7 @@ app.put("/admin/staff/:id", async (req, res) => {
     }
 });
 /* ---------------- ADMIN STAFF AVAILABILITY ---------------- */
-app.get("/admin/staff/:id/availability", async (req, res) => {
+app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const result = await (0, _1.query)(`SELECT day_of_week, start_time, end_time
@@ -137,7 +153,7 @@ app.get("/admin/staff/:id/availability", async (req, res) => {
         res.status(500).json({ error: "Failed to fetch availability" });
     }
 });
-app.put("/admin/staff/:id/availability", async (req, res) => {
+app.put("/admin/staff/:id/availability", adminAuth, async (req, res) => {
     const { id } = req.params;
     const availability = req.body;
     if (!Array.isArray(availability)) {
@@ -360,9 +376,16 @@ app.post("/bookings", async (req, res) => {
             start,
             end,
         ]);
+        const staffResult = await (0, _1.query)("SELECT name FROM staff WHERE id = $1", [assignedStaffId]);
         return res.status(201).json({
             booking_id: bookingResult.rows[0].id,
+            service_id,
+            service_name: serviceResult.rowCount ? undefined : undefined,
             staff_id: assignedStaffId,
+            staff_name: staffResult.rows[0]?.name || null,
+            customer_name: customer_name.trim(),
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
             status: "confirmed",
         });
     }
@@ -380,7 +403,7 @@ app.post("/bookings", async (req, res) => {
     }
 });
 /* ---------------- CANCEL BOOKING ---------------- */
-app.delete("/admin/bookings/:id", async (req, res) => {
+app.delete("/admin/bookings/:id", adminAuth, async (req, res) => {
     const { id } = req.params;
     try {
         const result = await (0, _1.query)(`UPDATE bookings

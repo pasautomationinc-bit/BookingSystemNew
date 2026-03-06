@@ -18,6 +18,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+const ADMIN_KEY = process.env.ADMIN_KEY;
+
+function adminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!ADMIN_KEY) {
+    return res.status(500).json({ error: "ADMIN_KEY is not configured" });
+  }
+
+  const incoming = req.headers["x-admin-key"];
+  if (incoming !== ADMIN_KEY) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  next();
+}
 /* ---------------- ADMIN PAGE ---------------- */
 app.get("/admin", (_req, res) => {
   const filePath = path.join(process.cwd(), "src", "db", "admin.html");
@@ -58,7 +73,7 @@ app.get("/services", async (_req, res) => {
 
 /* ---------------- ADMIN SERVICES ---------------- */
 
-app.post("/admin/services", async (req, res) => {
+app.post("/admin/services", adminAuth, async (req, res) => {
   const { name, duration_minutes, price_cents } = req.body as {
     name?: string;
     duration_minutes?: number;
@@ -84,7 +99,7 @@ app.post("/admin/services", async (req, res) => {
   }
 });
 
-app.put("/admin/services/:id", async (req, res) => {
+app.put("/admin/services/:id", adminAuth, async (req, res) => {
   const { id } = req.params;
   const { name, duration_minutes, price_cents } = req.body as {
     name?: string;
@@ -130,7 +145,7 @@ app.get("/staff", async (_req, res) => {
 
 /* ---------------- ADMIN STAFF ---------------- */
 
-app.post("/admin/staff", async (req, res) => {
+app.post("/admin/staff", adminAuth,async (req, res) => {
   const { name } = req.body as { name?: string };
 
   if (!name?.trim()) {
@@ -152,7 +167,7 @@ app.post("/admin/staff", async (req, res) => {
   }
 });
 
-app.put("/admin/staff/:id", async (req, res) => {
+app.put("/admin/staff/:id", adminAuth,async (req, res) => {
   const { id } = req.params;
   const { name, active } = req.body as { name?: string; active?: boolean };
 
@@ -179,7 +194,7 @@ app.put("/admin/staff/:id", async (req, res) => {
 
 /* ---------------- ADMIN STAFF AVAILABILITY ---------------- */
 
-app.get("/admin/staff/:id/availability", async (req, res) => {
+app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -198,7 +213,7 @@ app.get("/admin/staff/:id/availability", async (req, res) => {
   }
 });
 
-app.put("/admin/staff/:id/availability", async (req, res) => {
+app.put("/admin/staff/:id/availability", adminAuth,async (req, res) => {
   const { id } = req.params;
   const availability = req.body as Array<{
     day_of_week: number;
@@ -454,6 +469,10 @@ app.post("/bookings", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+    if (customer_phone && !/^[0-9+\-\s()]{7,20}$/.test(customer_phone.trim())) {
+    return res.status(400).json({ error: "Invalid phone number" });
+  }
+
   try {
     const serviceResult = await query<{ duration_minutes: number }>(
       "SELECT duration_minutes FROM services WHERE id = $1",
@@ -524,11 +543,23 @@ app.post("/bookings", async (req, res) => {
       ]
     );
 
-    return res.status(201).json({
-      booking_id: bookingResult.rows[0].id,
-      staff_id: assignedStaffId,
-      status: "confirmed",
-    });
+   const staffResult = await query<{ name: string }>(
+  "SELECT name FROM staff WHERE id = $1",
+  [assignedStaffId]
+);
+
+return res.status(201).json({
+  booking_id: bookingResult.rows[0].id,
+  service_id,
+  service_name: serviceResult.rowCount ? undefined : undefined,
+  staff_id: assignedStaffId,
+  staff_name: staffResult.rows[0]?.name || null,
+  customer_name: customer_name.trim(),
+  start_time: start.toISOString(),
+  end_time: end.toISOString(),
+  status: "confirmed",
+});
+
   } catch (err: any) {
     // DB overlap protection (if you have exclusion constraint)
     if (err.code === "23P01") {
@@ -546,7 +577,7 @@ app.post("/bookings", async (req, res) => {
 
 /* ---------------- CANCEL BOOKING ---------------- */
 
-app.delete("/admin/bookings/:id", async (req, res) => {
+app.delete("/admin/bookings/:id", adminAuth,async (req, res) => {
   const { id } = req.params;
 
   try {

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Booking Admin</title>
+    <link rel="icon" href="data:," />
     <style>
       :root{
         --bg:#0b1020;
@@ -59,7 +60,6 @@
       .hr-grid .head{ color:#cfe0ff; font-size:12px; font-weight:600; }
       .hr-row{ display:contents; }
     </style>
-    <link rel="icon" href="data:,">
   </head>
   <body>
     <div class="wrap">
@@ -69,7 +69,6 @@
       </div>
 
       <div class="grid">
-        <!-- LEFT: Bookings + Calendar -->
         <div class="card">
           <h3>Bookings & Day Calendar</h3>
           <div class="row">
@@ -94,12 +93,10 @@
           <div id="cal" class="calendar"></div>
         </div>
 
-        <!-- RIGHT: Admin controls -->
         <div class="card">
           <h3>Manage Staff & Services</h3>
 
           <div class="two">
-            <!-- Staff -->
             <div class="card" style="padding:12px;">
               <h3>Staff</h3>
               <div class="row">
@@ -116,7 +113,6 @@
               </table>
             </div>
 
-            <!-- Services -->
             <div class="card" style="padding:12px;">
               <h3>Services</h3>
               <div class="row">
@@ -136,7 +132,6 @@
             </div>
           </div>
 
-          <!-- Working hours -->
           <div class="card" style="padding:12px; margin-top:12px;">
             <h3>Working Hours</h3>
             <div class="row">
@@ -182,6 +177,7 @@
     </div>
 
     <script>
+      const ADMIN_KEY = prompt("Enter admin key:");
       const API = location.origin;
       document.getElementById("apiBase").textContent = API;
 
@@ -193,11 +189,17 @@
         el.textContent = text || "";
       }
 
-      async function fetchJSON(url, opts){
+      async function fetchJSON(url, opts = {}) {
+        opts.headers = {
+          ...(opts.headers || {}),
+          "X-Admin-Key": ADMIN_KEY
+        };
+
         const res = await fetch(url, opts);
         const txt = await res.text();
         let data = null;
         try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
+
         if (!res.ok) {
           const msg = (data && data.error) ? data.error : ("HTTP " + res.status);
           throw new Error(msg);
@@ -210,25 +212,22 @@
         return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       }
 
-      // ---------------- Staff + Services cache
       let staffAll = [];
       let servicesAll = [];
 
       async function loadStaffAll(){
         staffAll = await fetchJSON(API + "/staff");
-        // hours staff dropdown
+
         const hoursSel = $("hoursStaff");
         hoursSel.innerHTML =
-         `<option value="">Select staff...</option>` +
-          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+          <option value="">Select staff...</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
-        // bookings staff filter dropdown
         const bookSel = $("bookStaff");
         bookSel.innerHTML =
-          `<option value="">(All Staff)</option>` +
-          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+          <option value="">(All Staff)</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
-        // staff table (for deactivate)
         const tbody = $("staffRows");
         tbody.innerHTML = staffAll.map(s => `
           <tr>
@@ -240,7 +239,6 @@
           </tr>
         `).join("");
 
-        // deactivate click handlers
         tbody.querySelectorAll("[data-disable]").forEach(btn => {
           btn.addEventListener("click", async () => {
             const id = btn.getAttribute("data-disable");
@@ -299,7 +297,6 @@
         });
       }
 
-      // ---------------- Bookings
       async function loadBookings(){
         const date = $("date").value;
         const staff_id = $("bookStaff").value;
@@ -347,7 +344,6 @@
         const date = $("date").value;
         if (!date) return;
 
-        // Same window as your availability route (09:00-17:00 local)
         const start = new Date(date + "T09:00:00");
         const end = new Date(date + "T17:00:00");
 
@@ -380,7 +376,6 @@
         buildCalendar(bookings);
       }
 
-      // ---------------- Add Staff / Add Service
       async function addStaff(){
         const name = $("newStaffName").value.trim();
         if (!name) return setMsg("staffAddMsg","Name required","err");
@@ -423,7 +418,6 @@
         }
       }
 
-      // ---------------- Hours (staff_availability)
       function clearHoursInputs(){
         for (let d=0; d<=6; d++){
           $("d"+d+"s").value = "";
@@ -440,7 +434,6 @@
 
         try{
           const rows = await fetchJSON(API + "/admin/staff/" + staffId + "/availability");
-          // rows: [{day_of_week, start_time, end_time}]
           for (const r of rows){
             const d = Number(r.day_of_week);
             $("d"+d+"s").value = (r.start_time || "").slice(0,5);
@@ -460,7 +453,6 @@
         for (let d=0; d<=6; d++){
           const start_time = $("d"+d+"s").value;
           const end_time = $("d"+d+"e").value;
-          // only save rows that have both start/end
           if (start_time && end_time){
             payload.push({ day_of_week:d, start_time, end_time });
           }
@@ -478,14 +470,12 @@
         }
       }
 
-      // ---------------- Boot
       async function boot(){
         await loadStaffAll();
         await loadServicesAll();
         await refreshBookingsAndCal();
       }
 
-      // init
       (function init(){
         const d = new Date();
         $("date").value = d.toISOString().slice(0,10);
