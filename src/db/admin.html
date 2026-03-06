@@ -218,14 +218,14 @@
         // hours staff dropdown
         const hoursSel = $("hoursStaff");
         hoursSel.innerHTML =
-          <option value="">Select staff...</option> +
-          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
+         `<option value="">Select staff...</option>` +
+          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
 
         // bookings staff filter dropdown
         const bookSel = $("bookStaff");
         bookSel.innerHTML =
-          <option value="">(All Staff)</option> +
-          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
+          `<option value="">(All Staff)</option>` +
+          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
 
         // staff table (for deactivate)
         const tbody = $("staffRows");
