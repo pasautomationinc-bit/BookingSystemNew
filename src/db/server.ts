@@ -24,6 +24,13 @@ app.get("/admin", (_req, res) => {
   res.sendFile(filePath);
 });
 
+/* ---------------- BOOK PAGE ---------------- */
+
+app.get("/book", (_req, res) => {
+  const filePath = path.join(process.cwd(), "src", "db", "book.html");
+  res.sendFile(filePath);
+});
+
 /* ---------------- HEALTH ---------------- */
 
 app.get("/health", async (_req, res) => {

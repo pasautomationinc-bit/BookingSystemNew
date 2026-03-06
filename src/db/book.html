@@ -1,0 +1,499 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Book Appointment</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root{
+        --bg:#f7f7f8;
+        --card:#ffffff;
+        --text:#111827;
+        --muted:#6b7280;
+        --line:#e5e7eb;
+        --accent:#111827;
+        --accentText:#ffffff;
+      }
+
+      * { box-sizing: border-box; }
+
+      body{
+        margin:0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background:var(--bg);
+        color:var(--text);
+      }
+
+      .wrap{
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      h1{
+        font-size: 32px;
+        margin: 0 0 8px;
+      }
+
+      .sub{
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+
+      .section{
+        margin-top: 24px;
+      }
+
+      .section h2{
+        font-size: 18px;
+        margin: 0 0 12px;
+      }
+
+      .grid{
+        display:grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+      }
+
+      .card{
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        cursor: pointer;
+        transition: .15s ease;
+        min-height: 120px;
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+      }
+
+      .card:hover{
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(0,0,0,.06);
+      }
+
+      .card.selected{
+        border: 2px solid var(--accent);
+      }
+
+      .title{
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .muted{
+        color: var(--muted);
+      }
+
+      .price{
+        display:inline-block;
+        margin-top: 10px;
+        background:#f3f4f6;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+      }
+
+      .row{
+        display:flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items:center;
+      }
+
+      input, button{
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        font-size: 15px;
+      }
+
+      input[type="date"]{
+        background:#fff;
+      }
+
+      .times{
+        display:grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+      }
+
+      .time-btn{
+        background:#fff;
+        border:1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 12px;
+        cursor:pointer;
+        font-weight:600;
+      }
+
+      .time-btn.selected{
+        background: var(--accent);
+        color: var(--accentText);
+        border-color: var(--accent);
+      }
+
+      .panel{
+        background:#fff;
+        border:1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      .form{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .form .full{
+        grid-column: 1 / -1;
+      }
+
+      .confirm-btn{
+        background: var(--accent);
+        color: var(--accentText);
+        border-color: var(--accent);
+        cursor:pointer;
+        font-weight:700;
+      }
+
+      .confirm-btn:disabled{
+        opacity:.5;
+        cursor:not-allowed;
+      }
+
+      .msg{
+        margin-top: 12px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .success{
+        color: #166534;
+      }
+
+      .error{
+        color: #b91c1c;
+      }
+
+      @media (max-width: 700px){
+        .form{
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Book an Appointment</h1>
+      <div class="sub">Choose a service, professional, date, and time.</div>
+
+      <div class="section">
+        <h2>1) Choose a service</h2>
+        <div id="services" class="grid"></div>
+      </div>
+
+      <div class="section">
+        <h2>2) Choose a professional</h2>
+        <div id="staff" class="grid"></div>
+      </div>
+
+      <div class="section">
+        <h2>3) Choose a date</h2>
+        <div class="row">
+          <input id="date" type="date" />
+          <button id="loadTimesBtn">Load times</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>4) Choose a time</h2>
+        <div id="times" class="times"></div>
+        <div id="timesMsg" class="msg"></div>
+      </div>
+
+      <div class="section">
+        <h2>5) Your details</h2>
+        <div class="panel">
+          <div class="form">
+            <input id="customerName" class="full" placeholder="Full name" />
+            <input id="customerPhone" class="full" placeholder="Phone number" />
+            <button id="confirmBtn" class="confirm-btn full" disabled>Confirm Booking</button>
+          </div>
+          <div id="confirmMsg" class="msg"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = location.origin;
+
+      let selectedService = null;
+      let selectedStaff = null;
+      let selectedTime = null;
+      let allStaff = [];
+
+      const $ = (id) => document.getElementById(id);
+
+      function money(cents) {
+        return "$" + ((cents || 0) / 100).toFixed(2);
+      }
+
+      function fmtTime(iso) {
+        return new Date(iso).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      function setMsg(id, text, cls = "") {
+        const el = $(id);
+        el.className = "msg " + cls;
+        el.textContent = text || "";
+      }
+
+      async function fetchJSON(url, opts) {
+        const res = await fetch(url, opts);
+        const txt = await res.text();
+        let data = null;
+
+        try {
+          data = txt ? JSON.parse(txt) : null;
+        } catch {
+          data = { error: txt };
+        }
+
+        if (!res.ok) {
+          throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+
+        return data;
+      }
+
+      async function loadServices() {
+        const services = await fetchJSON(API + "/services");
+        const wrap = $("services");
+
+        wrap.innerHTML = services.map(s => `
+          <div class="card" data-service-id="${s.id}">
+            <div>
+              <div class="title">${s.name}</div>
+              <div class="muted">${s.duration_minutes} min</div>
+            </div>
+            <div class="price">${money(s.price_cents)}</div>
+          </div>
+        `).join("");
+
+        wrap.querySelectorAll("[data-service-id]").forEach(card => {
+          card.addEventListener("click", () => {
+            wrap.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+            card.classList.add("selected");
+
+            const id = card.getAttribute("data-service-id");
+            selectedService = services.find(s => s.id === id);
+            selectedTime = null;
+            $("times").innerHTML = "";
+            setMsg("timesMsg", "");
+            updateConfirmButton();
+          });
+        });
+      }
+
+      async function loadStaff() {
+        allStaff = await fetchJSON(API + "/staff");
+        const wrap = $("staff");
+
+        wrap.innerHTML = `
+          <div class="card selected" data-staff-id="">
+            <div>
+              <div class="title">Any Professional</div>
+              <div class="muted">We’ll auto-assign based on availability</div>
+            </div>
+          </div>
+        ` + allStaff.map(s => `
+          <div class="card" data-staff-id="${s.id}">
+            <div>
+              <div class="title">${s.name}</div>
+              <div class="muted">Choose this professional</div>
+            </div>
+          </div>
+        `).join("");
+
+        selectedStaff = null;
+
+        wrap.querySelectorAll("[data-staff-id]").forEach(card => {
+          card.addEventListener("click", () => {
+            wrap.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+            card.classList.add("selected");
+
+            const id = card.getAttribute("data-staff-id");
+            selectedStaff = id ? allStaff.find(s => s.id === id) : null;
+            selectedTime = null;
+            $("times").innerHTML = "";
+            setMsg("timesMsg", "");
+            updateConfirmButton();
+          });
+        });
+      }
+
+      async function loadTimes() {
+        if (!selectedService) {
+          setMsg("timesMsg", "Please choose a service first.", "error");
+          return;
+        }
+
+        const date = $("date").value;
+        if (!date) {
+          setMsg("timesMsg", "Please choose a date.", "error");
+          return;
+        }
+
+        const url = new URL(API + "/availability");
+        url.searchParams.set("service_id", selectedService.id);
+        url.searchParams.set("date", date);
+
+        if (selectedStaff?.id) {
+          url.searchParams.set("staff_id", selectedStaff.id);
+        }
+
+        const data = await fetchJSON(url.toString());
+        const timesWrap = $("times");
+        timesWrap.innerHTML = "";
+        selectedTime = null;
+        updateConfirmButton();
+
+        let slots = [];
+
+        if (selectedStaff?.id) {
+          const one = data.availability.find(a => a.staff_id === selectedStaff.id);
+          slots = one ? one.slots.map(slot => ({
+            staff_id: one.staff_id,
+            staff_name: one.staff_name,
+            start_time: slot
+          })) : [];
+        } else {
+          for (const staff of data.availability) {
+            for (const slot of staff.slots) {
+              slots.push({
+                staff_id: staff.staff_id,
+                staff_name: staff.staff_name,
+                start_time: slot
+              });
+            }
+          }
+        }
+
+        const seen = new Set();
+        slots = slots.filter(s => {
+          const key = s.start_time + "|" + s.staff_id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        if (!slots.length) {
+          setMsg("timesMsg", "No available times found for this selection.", "error");
+          return;
+        }
+
+        setMsg(
+          "timesMsg",
+          selectedStaff?.id
+            ? `Showing times for ${selectedStaff.name}`
+            : "Showing available times for all professionals"
+        );
+
+        timesWrap.innerHTML = slots.map(s => `
+          <button class="time-btn" data-start="${s.start_time}" data-staff="${s.staff_id}">
+            ${fmtTime(s.start_time)}
+          </button>
+        `).join("");
+
+        timesWrap.querySelectorAll(".time-btn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            timesWrap.querySelectorAll(".time-btn").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+
+            selectedTime = {
+              start_time: btn.getAttribute("data-start"),
+              staff_id: btn.getAttribute("data-staff")
+            };
+
+            updateConfirmButton();
+          });
+        });
+      }
+
+      function updateConfirmButton() {
+        const enabled =
+          !!selectedService &&
+          !!selectedTime &&
+          !!$("customerName").value.trim();
+
+        $("confirmBtn").disabled = !enabled;
+      }
+
+      async function confirmBooking() {
+        if (!selectedService || !selectedTime) {
+          setMsg("confirmMsg", "Please complete service, time, and name.", "error");
+          return;
+        }
+
+        const customer_name = $("customerName").value.trim();
+        const customer_phone = $("customerPhone").value.trim();
+
+        if (!customer_name) {
+          setMsg("confirmMsg", "Customer name is required.", "error");
+          return;
+        }
+
+        try {
+          const payload = {
+            service_id: selectedService.id,
+            staff_id: selectedTime.staff_id,
+            customer_name,
+            customer_phone,
+            start_time: selectedTime.start_time
+          };
+
+          const result = await fetchJSON(API + "/bookings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          setMsg("confirmMsg", `Booking confirmed! ID: ${result.booking_id}`, "success");
+
+          $("customerName").value = "";
+          $("customerPhone").value = "";
+          selectedTime = null;
+          $("times").innerHTML = "";
+          setMsg("timesMsg", "Booking created. Reload times for updated availability.", "success");
+          updateConfirmButton();
+        } catch (e) {
+          setMsg("confirmMsg", e.message, "error");
+        }
+      }
+
+      function setDefaultDate() {
+        const d = new Date();
+        $("date").value = d.toISOString().slice(0, 10);
+      }
+
+      async function init() {
+        setDefaultDate();
+        await loadServices();
+        await loadStaff();
+
+        $("loadTimesBtn").addEventListener("click", loadTimes);
+        $("confirmBtn").addEventListener("click", confirmBooking);
+        $("customerName").addEventListener("input", updateConfirmButton);
+      }
+
+      init();
+    </script>
+  </body>
+</html>
