@@ -537,7 +537,7 @@ app.post("/bookings", async (req, res) => {
         service_id,
         assignedStaffId,
         customer_name.trim(),
-        customer_phone,
+        customer_phone?.trim() || null,
         start,
         end,
       ]
