@@ -230,6 +230,7 @@
 
     <script>
       const API = location.origin;
+      const slug = window.location.pathname.split("/")[1];
 
       let selectedService = null;
       let selectedStaff = null;
@@ -274,7 +275,7 @@
       }
 
       async function loadServices() {
-        const services = await fetchJSON(API + "/services");
+        const services = await fetchJSON(`${API}/${slug}/services`);
         const wrap = $("services");
 
         wrap.innerHTML = services.map(s => `
@@ -303,7 +304,7 @@
       }
 
       async function loadStaff() {
-        allStaff = await fetchJSON(API + "/staff");
+        allStaff = await fetchJSON(`${API}/${slug}/staff`);
         const wrap = $("staff");
 
         wrap.innerHTML = `
@@ -351,7 +352,7 @@
           return;
         }
 
-        const url = new URL(API + "/availability");
+        const url = new URL(`${API}/${slug}/availability`);
         url.searchParams.set("service_id", selectedService.id);
         url.searchParams.set("date", date);
 
@@ -459,7 +460,7 @@
             start_time: selectedTime.start_time
           };
 
-          const result = await fetchJSON(API + "/bookings", {
+          const result = await fetchJSON(`${API}/${slug}/bookings`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -476,6 +477,7 @@
                 <div class="muted">Date & Time: ${new Date(result.start_time).toLocaleString()}</div>
                 <div class="muted">Customer: ${result.customer_name}</div>
                 <div class="muted">Confirmation #: ${result.booking_id}</div>
+                <div class="muted">Business: ${result.business_slug || slug}</div>
               </div>
 
               <div class="section">
