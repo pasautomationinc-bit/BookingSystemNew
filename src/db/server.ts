@@ -850,6 +850,10 @@ app.post("/:slug/holds", async (req, res) => {
   }
 });
 
+app.get("/version-check", (_req, res) => {
+  res.send("multi-tenant build live");
+});
+
 /* ---------------- SERVER ---------------- */
 
 const PORT = process.env.PORT || 3000;

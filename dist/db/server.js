@@ -12,6 +12,15 @@ const booking_service_1 = require("../services/booking.service");
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+async function getBusinessBySlug(slug) {
+    const result = await (0, _1.query)(`
+    SELECT id, name, slug
+    FROM businesses
+    WHERE slug = $1
+    LIMIT 1
+    `, [slug]);
+    return result.rows[0] || null;
+}
 const ADMIN_KEY = process.env.ADMIN_KEY;
 function adminAuth(req, res, next) {
     if (!ADMIN_KEY) {
@@ -23,30 +32,70 @@ function adminAuth(req, res, next) {
     }
     next();
 }
-/* ---------------- ADMIN PAGE ---------------- */
-app.get("/admin", (_req, res) => {
-    const filePath = path_1.default.join(process.cwd(), "src", "db", "admin.html");
-    res.sendFile(filePath);
+/* ---------------- PAGES ---------------- */
+app.get("/", async (_req, res) => {
+    res.send(`
+    <html>
+      <head>
+        <title>Booking System</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+          a { display:inline-block; margin:10px; padding:12px 18px; border:1px solid #ccc; border-radius:10px; text-decoration:none; color:black; }
+        </style>
+      </head>
+      <body>
+        <h1>Booking System</h1>
+        <p>Use a business slug in the URL.</p>
+        <p>Example:</p>
+        <a href="/veeth-demo/book">Customer Booking</a>
+        <a href="/veeth-demo/admin">Admin Dashboard</a>
+      </body>
+    </html>
+  `);
 });
-/* ---------------- BOOK PAGE ---------------- */
-app.get("/book", (_req, res) => {
+app.get("/:slug/book", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).send("Business not found");
+    }
     const filePath = path_1.default.join(process.cwd(), "src", "db", "book.html");
     res.sendFile(filePath);
 });
+app.get("/:slug/admin", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).send("Business not found");
+    }
+    const filePath = path_1.default.join(process.cwd(), "src", "db", "admin.html");
+    res.sendFile(filePath);
+});
 /* ---------------- HEALTH ---------------- */
-app.get("/health", async (_req, res) => {
+app.get("/:slug/health", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     try {
         await (0, _1.query)("SELECT 1");
-        res.json({ status: "ok", db: "connected" });
+        res.json({ status: "ok", db: "connected", business: business.slug });
     }
     catch {
         res.status(500).json({ status: "error", db: "disconnected" });
     }
 });
 /* ---------------- SERVICES ---------------- */
-app.get("/services", async (_req, res) => {
+app.get("/:slug/services", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     try {
-        const result = await (0, _1.query)("SELECT id, name, duration_minutes, price_cents FROM services ORDER BY created_at");
+        const result = await (0, _1.query)(`
+      SELECT id, name, duration_minutes, price_cents
+      FROM services
+      WHERE business_id = $1
+      ORDER BY created_at
+      `, [business.id]);
         res.json(result.rows);
     }
     catch (err) {
@@ -55,15 +104,21 @@ app.get("/services", async (_req, res) => {
     }
 });
 /* ---------------- ADMIN SERVICES ---------------- */
-app.post("/admin/services", adminAuth, async (req, res) => {
+app.post("/:slug/admin/services", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`${req.params.slug}`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { name, duration_minutes, price_cents } = req.body;
     if (!name?.trim() || !duration_minutes) {
         return res.status(400).json({ error: "Missing required fields" });
     }
     try {
-        const result = await (0, _1.query)(`INSERT INTO services (name, duration_minutes, price_cents)
-       VALUES ($1,$2,$3)
-       RETURNING id, name, duration_minutes, price_cents`, [name.trim(), duration_minutes, price_cents ?? 0]);
+        const result = await (0, _1.query)(`
+      INSERT INTO services (business_id, name, duration_minutes, price_cents)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, name, duration_minutes, price_cents
+      `, [business.id, name.trim(), duration_minutes, price_cents ?? 0]);
         res.status(201).json(result.rows[0]);
     }
     catch (err) {
@@ -71,16 +126,23 @@ app.post("/admin/services", adminAuth, async (req, res) => {
         res.status(500).json({ error: "Failed to create service" });
     }
 });
-app.put("/admin/services/:id", adminAuth, async (req, res) => {
+app.put("/:slug/admin/services/:id", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`${req.params.slug}`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { id } = req.params;
     const { name, duration_minutes, price_cents } = req.body;
     try {
-        const result = await (0, _1.query)(`UPDATE services
-       SET name = COALESCE($1,name),
-           duration_minutes = COALESCE($2,duration_minutes),
-           price_cents = COALESCE($3,price_cents)
-       WHERE id = $4
-       RETURNING id, name, duration_minutes, price_cents`, [name?.trim() || null, duration_minutes ?? null, price_cents ?? null, id]);
+        const result = await (0, _1.query)(`
+      UPDATE services
+      SET name = COALESCE($1, name),
+          duration_minutes = COALESCE($2, duration_minutes),
+          price_cents = COALESCE($3, price_cents)
+      WHERE id = $4
+        AND business_id = $5
+      RETURNING id, name, duration_minutes, price_cents
+      `, [name?.trim() || null, duration_minutes ?? null, price_cents ?? null, id, business.id]);
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Service not found" });
         }
@@ -92,9 +154,19 @@ app.put("/admin/services/:id", adminAuth, async (req, res) => {
     }
 });
 /* ---------------- STAFF ---------------- */
-app.get("/staff", async (_req, res) => {
+app.get("/:slug/staff", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     try {
-        const result = await (0, _1.query)("SELECT id, name FROM staff WHERE active = true ORDER BY created_at");
+        const result = await (0, _1.query)(`
+      SELECT id, name
+      FROM staff
+      WHERE business_id = $1
+        AND active = true
+      ORDER BY created_at
+      `, [business.id]);
         res.json(result.rows);
     }
     catch (err) {
@@ -103,15 +175,21 @@ app.get("/staff", async (_req, res) => {
     }
 });
 /* ---------------- ADMIN STAFF ---------------- */
-app.post("/admin/staff", adminAuth, async (req, res) => {
+app.post("/:slug/admin/staff", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`req.params.slug`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { name } = req.body;
     if (!name?.trim()) {
         return res.status(400).json({ error: "Name required" });
     }
     try {
-        const result = await (0, _1.query)(`INSERT INTO staff (name, active)
-       VALUES ($1, true)
-       RETURNING id, name, active`, [name.trim()]);
+        const result = await (0, _1.query)(`
+      INSERT INTO staff (business_id, name, active)
+      VALUES ($1, $2, true)
+      RETURNING id, name, active
+      `, [business.id, name.trim()]);
         res.status(201).json(result.rows[0]);
     }
     catch (err) {
@@ -119,15 +197,22 @@ app.post("/admin/staff", adminAuth, async (req, res) => {
         res.status(500).json({ error: "Failed to create staff" });
     }
 });
-app.put("/admin/staff/:id", adminAuth, async (req, res) => {
+app.put("/:slug/admin/staff/:id", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`${req.params.slug}`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { id } = req.params;
     const { name, active } = req.body;
     try {
-        const result = await (0, _1.query)(`UPDATE staff
-       SET name = COALESCE($1, name),
-           active = COALESCE($2, active)
-       WHERE id = $3
-       RETURNING id, name, active`, [name?.trim() || null, typeof active === "boolean" ? active : null, id]);
+        const result = await (0, _1.query)(`
+      UPDATE staff
+      SET name = COALESCE($1, name),
+          active = COALESCE($2, active)
+      WHERE id = $3
+        AND business_id = $4
+      RETURNING id, name, active
+      `, [name?.trim() || null, typeof active === "boolean" ? active : null, id, business.id]);
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Staff not found" });
         }
@@ -139,13 +224,25 @@ app.put("/admin/staff/:id", adminAuth, async (req, res) => {
     }
 });
 /* ---------------- ADMIN STAFF AVAILABILITY ---------------- */
-app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
+app.get("/:slug/admin/staff/:id/availability", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`${req.params.slug}`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { id } = req.params;
     try {
-        const result = await (0, _1.query)(`SELECT day_of_week, start_time, end_time
-       FROM staff_availability
-       WHERE staff_id = $1
-       ORDER BY day_of_week`, [id]);
+        const staffCheck = await (0, _1.query)(`
+      SELECT id FROM staff WHERE id = $1 AND business_id = $2
+      `, [id, business.id]);
+        if (staffCheck.rowCount === 0) {
+            return res.status(404).json({ error: "Staff not found" });
+        }
+        const result = await (0, _1.query)(`
+      SELECT day_of_week, start_time, end_time
+      FROM staff_availability
+      WHERE staff_id = $1
+      ORDER BY day_of_week
+      `, [id]);
         res.json(result.rows);
     }
     catch (err) {
@@ -153,7 +250,11 @@ app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
         res.status(500).json({ error: "Failed to fetch availability" });
     }
 });
-app.put("/admin/staff/:id/availability", adminAuth, async (req, res) => {
+app.put("/:slug/admin/staff/:id/availability", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`${req.params.slug}`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { id } = req.params;
     const availability = req.body;
     if (!Array.isArray(availability)) {
@@ -169,10 +270,20 @@ app.put("/admin/staff/:id/availability", adminAuth, async (req, res) => {
         }
     }
     try {
-        await (0, _1.query)(`DELETE FROM staff_availability WHERE staff_id = $1`, [id]);
+        const staffCheck = await (0, _1.query)(`
+      SELECT id FROM staff WHERE id = $1 AND business_id = $2
+      `, [id, business.id]);
+        if (staffCheck.rowCount === 0) {
+            return res.status(404).json({ error: "Staff not found" });
+        }
+        await (0, _1.query)(`
+      DELETE FROM staff_availability WHERE staff_id = $1
+      `, [id]);
         for (const a of availability) {
-            await (0, _1.query)(`INSERT INTO staff_availability (staff_id, day_of_week, start_time, end_time)
-         VALUES ($1,$2,$3,$4)`, [id, a.day_of_week, a.start_time, a.end_time]);
+            await (0, _1.query)(`
+        INSERT INTO staff_availability (staff_id, day_of_week, start_time, end_time)
+        VALUES ($1, $2, $3, $4)
+        `, [id, a.day_of_week, a.start_time, a.end_time]);
         }
         res.json({ success: true });
     }
@@ -181,11 +292,12 @@ app.put("/admin/staff/:id/availability", adminAuth, async (req, res) => {
         res.status(500).json({ error: "Failed to update availability" });
     }
 });
-/* ---------------- AVAILABILITY ----------------
-   Uses staff_availability per staff per day_of_week.
-   Optional: staff_id filter.
-*/
-app.get("/availability", async (req, res) => {
+/* ---------------- AVAILABILITY ---------------- */
+app.get("/:slug/availability", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { service_id, date, staff_id } = req.query;
     if (!service_id || !date) {
         return res.status(400).json({
@@ -193,23 +305,38 @@ app.get("/availability", async (req, res) => {
         });
     }
     try {
-        // 1) Service duration
-        const serviceResult = await (0, _1.query)("SELECT duration_minutes FROM services WHERE id = $1", [service_id]);
+        const serviceResult = await (0, _1.query)(`
+      SELECT duration_minutes
+      FROM services
+      WHERE id = $1
+        AND business_id = $2
+      `, [service_id, business.id]);
         if (serviceResult.rowCount === 0) {
             return res.status(404).json({ error: "Service not found" });
         }
         const duration = serviceResult.rows[0].duration_minutes;
         const slotStepMinutes = 15;
-        // 2) Staff list (active, optional filter)
         const staffResult = await (0, _1.query)(staff_id
-            ? "SELECT id, name FROM staff WHERE active = true AND id = $1"
-            : "SELECT id, name FROM staff WHERE active = true ORDER BY created_at", staff_id ? [staff_id] : []);
-        // 3) Day-of-week (Postgres: 0=Sun ... 6=Sat)
-        const dowResult = await (0, _1.query)(`SELECT EXTRACT(DOW FROM DATE $1) as dow`, [date]);
+            ? `
+          SELECT id, name
+          FROM staff
+          WHERE id = $1
+            AND business_id = $2
+            AND active = true
+          `
+            : `
+          SELECT id, name
+          FROM staff
+          WHERE business_id = $1
+            AND active = true
+          ORDER BY created_at
+          `, staff_id ? [staff_id, business.id] : [business.id]);
+        const dowResult = await (0, _1.query)(`
+      SELECT EXTRACT(DOW FROM DATE $1) as dow
+      `, [date]);
         const dow = Number(dowResult.rows[0]?.dow);
         const availability = [];
         for (const staff of staffResult.rows) {
-            // 4) Get this staff's working hours for that day
             const hoursResult = await (0, _1.query)(`
         SELECT start_time, end_time
         FROM staff_availability
@@ -217,7 +344,6 @@ app.get("/availability", async (req, res) => {
           AND day_of_week = $2
         LIMIT 1
         `, [staff.id, dow]);
-            // If no hours set for that day -> no slots
             if (hoursResult.rowCount === 0) {
                 availability.push({
                     staff_id: staff.id,
@@ -227,21 +353,19 @@ app.get("/availability", async (req, res) => {
                 continue;
             }
             const { start_time, end_time } = hoursResult.rows[0];
-            // Build local-ish dayStart/dayEnd with fixed -05:00 offset (your current pattern)
             const dayStart = new Date(`${date}T${start_time}-05:00`);
             const dayEnd = new Date(`${date}T${end_time}-05:00`);
-            // 5) Existing confirmed bookings inside that window
             const bookingsResult = await (0, _1.query)(`
         SELECT start_time, end_time
         FROM bookings
-        WHERE staff_id = $1
-          AND start_time >= $2
-          AND start_time < $3
+        WHERE business_id = $1
+          AND staff_id = $2
+          AND start_time >= $3
+          AND start_time < $4
           AND status = 'confirmed'
-        `, [staff.id, dayStart, dayEnd]);
+        `, [business.id, staff.id, dayStart, dayEnd]);
             const bookings = bookingsResult.rows;
             const slots = [];
-            // 6) Generate slots
             for (let slotStart = new Date(dayStart); slotStart.getTime() + duration * 60000 <= dayEnd.getTime(); slotStart = new Date(slotStart.getTime() + slotStepMinutes * 60000)) {
                 const slotEnd = new Date(slotStart.getTime() + duration * 60000);
                 const overlaps = bookings.some((b) => b.start_time < slotEnd && b.end_time > slotStart);
@@ -265,7 +389,11 @@ app.get("/availability", async (req, res) => {
     }
 });
 /* ---------------- GET BOOKINGS ---------------- */
-app.get("/bookings", async (req, res) => {
+app.get("/:slug/bookings", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { date, staff_id, service_id, status } = req.query;
     if (!date) {
         return res.status(400).json({ error: "date (YYYY-MM-DD) is required" });
@@ -276,6 +404,8 @@ app.get("/bookings", async (req, res) => {
     try {
         const conditions = [];
         const params = [];
+        params.push(business.id);
+        conditions.push(`b.business_id = $${params.length}`);
         params.push(dayStart);
         conditions.push(`b.start_time >= $${params.length}`);
         params.push(dayEnd);
@@ -318,7 +448,11 @@ app.get("/bookings", async (req, res) => {
     }
 });
 /* ---------------- BOOKINGS ---------------- */
-app.post("/bookings", async (req, res) => {
+app.post("/:slug/bookings", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const body = req.body;
     const { service_id, staff_id, customer_name, customer_phone, start_time } = body;
     if (!service_id || !customer_name?.trim() || !start_time) {
@@ -328,7 +462,12 @@ app.post("/bookings", async (req, res) => {
         return res.status(400).json({ error: "Invalid phone number" });
     }
     try {
-        const serviceResult = await (0, _1.query)("SELECT duration_minutes FROM services WHERE id = $1", [service_id]);
+        const serviceResult = await (0, _1.query)(`
+      SELECT name, duration_minutes
+      FROM services
+      WHERE id = $1
+        AND business_id = $2
+      `, [service_id, business.id]);
         if (serviceResult.rowCount === 0) {
             return res.status(404).json({ error: "Service not found" });
         }
@@ -336,23 +475,24 @@ app.post("/bookings", async (req, res) => {
         const start = new Date(start_time);
         const end = new Date(start.getTime() + duration * 60000);
         let assignedStaffId = staff_id;
-        // AUTO-ASSIGN STAFF IF NOT PROVIDED
         if (!assignedStaffId) {
             const availableStaff = await (0, _1.query)(`
         SELECT s.id
         FROM staff s
-        WHERE s.active = true
+        WHERE s.business_id = $1
+          AND s.active = true
           AND NOT EXISTS (
             SELECT 1
             FROM bookings b
-            WHERE b.staff_id = s.id
-              AND b.start_time < $2
-              AND b.end_time   > $1
+            WHERE b.business_id = $1
+              AND b.staff_id = s.id
+              AND b.start_time < $3
+              AND b.end_time > $2
               AND b.status = 'confirmed'
           )
         ORDER BY s.created_at
         LIMIT 1
-        `, [start, end]);
+        `, [business.id, start, end]);
             if (availableStaff.rowCount === 0) {
                 return res.status(409).json({
                     error: "No staff available for this time slot",
@@ -360,8 +500,21 @@ app.post("/bookings", async (req, res) => {
             }
             assignedStaffId = availableStaff.rows[0].id;
         }
+        else {
+            const staffCheck = await (0, _1.query)(`
+        SELECT id
+        FROM staff
+        WHERE id = $1
+          AND business_id = $2
+          AND active = true
+        `, [assignedStaffId, business.id]);
+            if (staffCheck.rowCount === 0) {
+                return res.status(404).json({ error: "Staff not found" });
+            }
+        }
         const bookingResult = await (0, _1.query)(`
       INSERT INTO bookings (
+        business_id,
         service_id,
         staff_id,
         customer_name,
@@ -369,9 +522,10 @@ app.post("/bookings", async (req, res) => {
         start_time,
         end_time
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
       `, [
+            business.id,
             service_id,
             assignedStaffId,
             customer_name.trim(),
@@ -379,11 +533,12 @@ app.post("/bookings", async (req, res) => {
             start,
             end,
         ]);
-        const staffResult = await (0, _1.query)("SELECT name FROM staff WHERE id = $1", [assignedStaffId]);
+        const staffResult = await (0, _1.query)(`SELECT name FROM staff WHERE id = $1 AND business_id = $2`, [assignedStaffId, business.id]);
         return res.status(201).json({
             booking_id: bookingResult.rows[0].id,
+            business_slug: business.slug,
             service_id,
-            service_name: serviceResult.rowCount ? undefined : undefined,
+            service_name: serviceResult.rows[0].name,
             staff_id: assignedStaffId,
             staff_name: staffResult.rows[0]?.name || null,
             customer_name: customer_name.trim(),
@@ -393,7 +548,6 @@ app.post("/bookings", async (req, res) => {
         });
     }
     catch (err) {
-        // DB overlap protection (if you have exclusion constraint)
         if (err.code === "23P01") {
             return res.status(409).json({
                 error: "Time slot already booked",
@@ -406,13 +560,20 @@ app.post("/bookings", async (req, res) => {
     }
 });
 /* ---------------- CANCEL BOOKING ---------------- */
-app.delete("/admin/bookings/:id", adminAuth, async (req, res) => {
+app.delete("/:slug/admin/bookings/:id", adminAuth, async (req, res) => {
+    const business = await getBusinessBySlug(`req.params.slug`);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     const { id } = req.params;
     try {
-        const result = await (0, _1.query)(`UPDATE bookings
-       SET status = 'cancelled'
-       WHERE id = $1
-       RETURNING id`, [id]);
+        const result = await (0, _1.query)(`
+      UPDATE bookings
+      SET status = 'cancelled'
+      WHERE id = $1
+        AND business_id = $2
+      RETURNING id
+      `, [id, business.id]);
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Booking not found" });
         }
@@ -424,11 +585,19 @@ app.delete("/admin/bookings/:id", adminAuth, async (req, res) => {
     }
 });
 /* ---------------- HOLDS ---------------- */
-app.post("/holds", async (req, res) => {
+app.post("/:slug/holds", async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+    }
     try {
         const { tenant_id, staff_id, start_at, end_at, total_price_cents } = req.body;
         if (!tenant_id || !staff_id || !start_at || !end_at || !total_price_cents) {
             return res.status(400).json({ error: "Missing required fields" });
+        }
+        const staffCheck = await (0, _1.query)(`SELECT id FROM staff WHERE id = $1 AND business_id = $2`, [staff_id, business.id]);
+        if (staffCheck.rowCount === 0) {
+            return res.status(404).json({ error: "Staff not found" });
         }
         const result = await (0, booking_service_1.createHold)(tenant_id, staff_id, new Date(start_at), new Date(end_at), total_price_cents);
         return res.status(201).json(result);
