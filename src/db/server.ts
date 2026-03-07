@@ -18,6 +18,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+async function getBusinessBySlug(slug: string) {
+  const result = await query<{ id: string; name: string; slug: string }>(
+    `
+    SELECT id, name, slug
+    FROM businesses
+    WHERE slug = $1
+    LIMIT 1
+    `,
+    [slug]
+  );
+
+  return result.rows[0] || null;
+}
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
@@ -34,21 +47,37 @@ function adminAuth(req: express.Request, res: express.Response, next: express.Ne
   next();
 }
 /* ---------------- ADMIN PAGE ---------------- */
-app.get("/admin", (_req, res) => {
+app.get("/:slug/admin", (_req, res) => {
   const filePath = path.join(process.cwd(), "src", "db", "admin.html");
   res.sendFile(filePath);
 });
 
 /* ---------------- BOOK PAGE ---------------- */
 
-app.get("/book", (_req, res) => {
+app.get("/:slug/book", (_req, res) => {
   const filePath = path.join(process.cwd(), "src", "db", "book.html");
+  res.sendFile(filePath);
+});
+
+/* ---------------- PAGES ---------------- */
+
+app.get("/", (_req, res) => {
+  res.redirect("/book");
+});
+
+app.get("/:slug/book", (_req, res) => {
+  const filePath = path.join(process.cwd(), "src", "db", "book.html");
+  res.sendFile(filePath);
+});
+
+app.get("/:slug/admin", (_req, res) => {
+  const filePath = path.join(process.cwd(), "src", "db", "admin.html");
   res.sendFile(filePath);
 });
 
 /* ---------------- HEALTH ---------------- */
 
-app.get("/health", async (_req, res) => {
+app.get("/:slug/health", async (_req, res) => {
   try {
     await query("SELECT 1");
     res.json({ status: "ok", db: "connected" });
@@ -59,7 +88,7 @@ app.get("/health", async (_req, res) => {
 
 /* ---------------- SERVICES ---------------- */
 
-app.get("/services", async (_req, res) => {
+app.get("/:slug/services", async (_req, res) => {
   try {
     const result = await query(
       "SELECT id, name, duration_minutes, price_cents FROM services ORDER BY created_at"
@@ -73,7 +102,7 @@ app.get("/services", async (_req, res) => {
 
 /* ---------------- ADMIN SERVICES ---------------- */
 
-app.post("/admin/services", adminAuth, async (req, res) => {
+app.post("/:slug/admin/services", adminAuth, async (req, res) => {
   const { name, duration_minutes, price_cents } = req.body as {
     name?: string;
     duration_minutes?: number;
@@ -99,7 +128,7 @@ app.post("/admin/services", adminAuth, async (req, res) => {
   }
 });
 
-app.put("/admin/services/:id", adminAuth, async (req, res) => {
+app.put("/:slug/admin/services/:id", adminAuth, async (req, res) => {
   const { id } = req.params;
   const { name, duration_minutes, price_cents } = req.body as {
     name?: string;
@@ -131,7 +160,7 @@ app.put("/admin/services/:id", adminAuth, async (req, res) => {
 
 /* ---------------- STAFF ---------------- */
 
-app.get("/staff", async (_req, res) => {
+app.get("/:slug/staff", async (_req, res) => {
   try {
     const result = await query(
       "SELECT id, name FROM staff WHERE active = true ORDER BY created_at"
@@ -145,7 +174,7 @@ app.get("/staff", async (_req, res) => {
 
 /* ---------------- ADMIN STAFF ---------------- */
 
-app.post("/admin/staff", adminAuth,async (req, res) => {
+app.post("/:slug/admin/staff", adminAuth,async (req, res) => {
   const { name } = req.body as { name?: string };
 
   if (!name?.trim()) {
@@ -167,7 +196,7 @@ app.post("/admin/staff", adminAuth,async (req, res) => {
   }
 });
 
-app.put("/admin/staff/:id", adminAuth,async (req, res) => {
+app.put("/:slug/admin/staff/:id", adminAuth,async (req, res) => {
   const { id } = req.params;
   const { name, active } = req.body as { name?: string; active?: boolean };
 
@@ -194,7 +223,7 @@ app.put("/admin/staff/:id", adminAuth,async (req, res) => {
 
 /* ---------------- ADMIN STAFF AVAILABILITY ---------------- */
 
-app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
+app.get("/:slug/admin/staff/:id/availability", adminAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -213,7 +242,7 @@ app.get("/admin/staff/:id/availability", adminAuth, async (req, res) => {
   }
 });
 
-app.put("/admin/staff/:id/availability", adminAuth,async (req, res) => {
+app.put("/:slug/admin/staff/:id/availability", adminAuth,async (req, res) => {
   const { id } = req.params;
   const availability = req.body as Array<{
     day_of_week: number;
@@ -259,7 +288,7 @@ app.put("/admin/staff/:id/availability", adminAuth,async (req, res) => {
    Uses staff_availability per staff per day_of_week.
    Optional: staff_id filter.
 */
-app.get("/availability", async (req, res) => {
+app.get("/:slug/availability", async (req, res) => {
   const { service_id, date, staff_id } = req.query as {
     service_id?: string;
     date?: string;        // YYYY-MM-DD
@@ -390,7 +419,7 @@ app.get("/availability", async (req, res) => {
 
 /* ---------------- GET BOOKINGS ---------------- */
 
-app.get("/bookings", async (req, res) => {
+app.get("/:slug/bookings", async (req, res) => {
   const { date, staff_id, service_id, status } = req.query as {
     date?: string; // YYYY-MM-DD
     staff_id?: string;
@@ -460,7 +489,7 @@ app.get("/bookings", async (req, res) => {
 
 /* ---------------- BOOKINGS ---------------- */
 
-app.post("/bookings", async (req, res) => {
+app.post("/:slug/bookings", async (req, res) => {
   const body = req.body as CreateBookingInput;
 
   const { service_id, staff_id, customer_name, customer_phone, start_time } = body;
@@ -577,7 +606,7 @@ return res.status(201).json({
 
 /* ---------------- CANCEL BOOKING ---------------- */
 
-app.delete("/admin/bookings/:id", adminAuth,async (req, res) => {
+app.delete("/:slug/admin/bookings/:id", adminAuth,async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -602,7 +631,7 @@ app.delete("/admin/bookings/:id", adminAuth,async (req, res) => {
 
 /* ---------------- HOLDS ---------------- */
 
-app.post("/holds", async (req, res) => {
+app.post("/:slug/holds", async (req, res) => {
   try {
     const { tenant_id, staff_id, start_at, end_at, total_price_cents } =
       req.body as {
