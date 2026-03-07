@@ -239,7 +239,10 @@ app.get("/:slug/staff", async (req, res) => {
 /* ---------------- ADMIN STAFF ---------------- */
 
 app.post("/:slug/admin/staff", adminAuth, async (req, res) => {
-  const business = await getBusinessBySlug(`req.params.slug`);
+  const slug = req.params.slug as string;
+
+  const business = await getBusinessBySlug(slug);
+
   if (!business) {
     return res.status(404).json({ error: "Business not found" });
   }
@@ -261,6 +264,7 @@ app.post("/:slug/admin/staff", adminAuth, async (req, res) => {
     );
 
     res.status(201).json(result.rows[0]);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create staff" });
@@ -268,7 +272,8 @@ app.post("/:slug/admin/staff", adminAuth, async (req, res) => {
 });
 
 app.put("/:slug/admin/staff/:id", adminAuth, async (req, res) => {
-  const business = await getBusinessBySlug(`${req.params.slug}`);
+  const slug = req.params.slug as string;
+  const business = await getBusinessBySlug(slug);
   if (!business) {
     return res.status(404).json({ error: "Business not found" });
   }
