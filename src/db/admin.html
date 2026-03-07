@@ -65,7 +65,7 @@
     <div class="wrap">
       <div class="topbar">
         <div class="title">Admin Dashboard</div>
-        <div class="pill">Local • <span id="apiBase"></span></div>
+        <div class="pill">Business: <span id="businessSlug"></span> • <span id="apiBase"></span></div>
       </div>
 
       <div class="grid">
@@ -179,7 +179,10 @@
     <script>
       const ADMIN_KEY = prompt("Enter admin key:");
       const API = location.origin;
+      const slug = window.location.pathname.split("/")[1];
+
       document.getElementById("apiBase").textContent = API;
+      document.getElementById("businessSlug").textContent = slug;
 
       const $ = (id) => document.getElementById(id);
 
@@ -216,17 +219,17 @@
       let servicesAll = [];
 
       async function loadStaffAll(){
-        staffAll = await fetchJSON(API + "/staff");
+        staffAll = await fetchJSON(`${API}/${slug}/staff`);
 
         const hoursSel = $("hoursStaff");
         hoursSel.innerHTML =
-         `<option value="">Select staff...</option>` +
-          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+          <option value="">Select staff...</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
         const bookSel = $("bookStaff");
         bookSel.innerHTML =
-          `<option value="">(All Staff)</option>` +
-          staffAll.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+          <option value="">(All Staff)</option> +
+          staffAll.map(s => <option value="${s.id}">${s.name}</option>).join("");
 
         const tbody = $("staffRows");
         tbody.innerHTML = staffAll.map(s => `
@@ -243,7 +246,7 @@
           btn.addEventListener("click", async () => {
             const id = btn.getAttribute("data-disable");
             try{
-              await fetchJSON(API + "/admin/staff/" + id, {
+              await fetchJSON(`${API}/${slug}/admin/staff/${id}`, {
                 method:"PUT",
                 headers:{ "Content-Type":"application/json" },
                 body: JSON.stringify({ active:false })
@@ -258,7 +261,7 @@
       }
 
       async function loadServicesAll(){
-        servicesAll = await fetchJSON(API + "/services");
+        servicesAll = await fetchJSON(`${API}/${slug}/services`);
         const tbody = $("svcRows");
         tbody.innerHTML = servicesAll.map(s => {
           const price = (s.price_cents || 0) / 100;
@@ -283,7 +286,7 @@
             const price_cents = Math.round(price * 100);
 
             try{
-              await fetchJSON(API + "/admin/services/" + id, {
+              await fetchJSON(`${API}/${slug}/admin/services/${id}`, {
                 method:"PUT",
                 headers:{ "Content-Type":"application/json" },
                 body: JSON.stringify({ name, duration_minutes, price_cents })
@@ -301,11 +304,11 @@
         const date = $("date").value;
         const staff_id = $("bookStaff").value;
 
-        const url = new URL(API + "/bookings");
+        const url = new URL(`${API}/${slug}/bookings`);
         url.searchParams.set("date", date);
         if (staff_id) url.searchParams.set("staff_id", staff_id);
 
-        const bookings = await fetchJSON(url);
+        const bookings = await fetchJSON(url.toString());
 
         const tbody = $("bookRows");
         tbody.innerHTML = bookings.map(b => `
@@ -326,7 +329,7 @@
           btn.addEventListener("click", async () => {
             const id = btn.getAttribute("data-cancel");
             try{
-              await fetchJSON(API + "/admin/bookings/" + id, { method:"DELETE" });
+              await fetchJSON(`${API}/${slug}/admin/bookings/${id}`, { method:"DELETE" });
               await refreshBookingsAndCal();
             }catch(e){
               alert(e.message);
@@ -381,7 +384,7 @@
         if (!name) return setMsg("staffAddMsg","Name required","err");
 
         try{
-          await fetchJSON(API + "/admin/staff", {
+          await fetchJSON(`${API}/${slug}/admin/staff`, {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ name })
@@ -403,7 +406,7 @@
         if (!name || !duration_minutes) return setMsg("svcAddMsg","Name + minutes required","err");
 
         try{
-          await fetchJSON(API + "/admin/services", {
+          await fetchJSON(`${API}/${slug}/admin/services`, {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify({ name, duration_minutes, price_cents })
@@ -433,7 +436,7 @@
         setMsg("hoursMsg","Loading...","");
 
         try{
-          const rows = await fetchJSON(API + "/admin/staff/" + staffId + "/availability");
+          const rows = await fetchJSON(`${API}/${slug}/admin/staff/${staffId}/availability`);
           for (const r of rows){
             const d = Number(r.day_of_week);
             $("d"+d+"s").value = (r.start_time || "").slice(0,5);
@@ -459,7 +462,7 @@
         }
 
         try{
-          await fetchJSON(API + "/admin/staff/" + staffId + "/availability", {
+          await fetchJSON(`${API}/${slug}/admin/staff/${staffId}/availability`, {
             method:"PUT",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify(payload)
