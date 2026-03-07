@@ -854,6 +854,7 @@ app.get("/version-check", (_req, res) => {
   res.send("multi-tenant build live");
 });
 
+console.log("USING src/db/server.ts build");
 /* ---------------- SERVER ---------------- */
 
 const PORT = process.env.PORT || 3000;
